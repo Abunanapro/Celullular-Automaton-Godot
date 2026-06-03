@@ -13,7 +13,8 @@ config_version=5
 config/name="TR-Sandbox-Test"
 run/main_scene="uid://nlqdtlnwamo6"
 config/features=PackedStringArray("4.5", "GL Compatibility")
-config/icon="res://icon.svg"
+config/icon="uid://dk5ltye3ej1w0"
+config/windows_native_icon="res://iconpeak.ico"
 
 [rendering]
 
