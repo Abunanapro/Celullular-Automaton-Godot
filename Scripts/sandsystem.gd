@@ -8,7 +8,9 @@ const ID_STEAM =4
 const DensityList=[1.5,1,null,0.5]
 const ActiveMaterialList=[1,2,4] #Place here material IDS that you want to "tick"
 var holding= false
-
+var delete=false
+var lastmaterialbrush=ID_SAND
+var active_cells = {}
 #Stat Vars
 var SandUpdates = 0
 var WaterUpdates = 0
@@ -67,22 +69,31 @@ func _process(delta: float) -> void:
 		var tilexy = tilemap.local_to_map(tilemap.to_local(mouse_pos))
 		var offset = floor(brush_size / 2.0)
 		tilemap.set_cell(tilexy, brush, Vector2i(0, 0))
+		wake_cell(tilexy)
 		for n in brush_size:
 			for i in brush_size:
 				var pos = tilexy + Vector2i(n - offset, i - offset)
 				tilemap.set_cell(pos, brush, Vector2i(0, 0))
+				wake_cell(pos)
 		
 func updatebrush():
 	brush_size=int(brushlineedit.text)
 	if waterbutton.button_pressed==true:
 		brush=ID_WATER
+		lastmaterialbrush=ID_WATER
 	elif dirtbutton.button_pressed==true:
 		brush=ID_DIRT
+		lastmaterialbrush=ID_DIRT
 	elif sandbutton.button_pressed==true:
 		brush=ID_SAND
+		lastmaterialbrush=ID_SAND
 	elif  steambutton.button_pressed==true:
 		brush=ID_STEAM
+		lastmaterialbrush=ID_STEAM
+	if delete==true:
+		brush=-1
 
+	
 func _input(event:InputEvent) -> void:
 	if get_viewport().gui_get_hovered_control() != null:
 		updatebrush()
@@ -93,23 +104,39 @@ func _input(event:InputEvent) -> void:
 		var tilexy=tilemap.local_to_map(tilemap.to_local(event.position))
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			holding = event.pressed
+			
+			delete=false
+			brush=lastmaterialbrush
+			
 			updatebrush()
 			tilemap.set_cell(tilexy,brush,Vector2i(0,0))
+			wake_cell(tilexy)
 		if event.button_index == MOUSE_BUTTON_RIGHT:
 			holding = event.pressed
 			tilemap.set_cell(tilexy,brush,Vector2i(-1,-1))
+			wake_cell(tilexy)
+			delete=true
+			updatebrush()
+			
 		
 		
+func wake_cell(pos: Vector2i):
+	active_cells[pos] = true
+	for dx in [-1, 0, 1]:
+		for dy in [-1, 0, 1]:
+			active_cells[pos + Vector2i(dx, dy)] = true
 
 func _on_timer_timeout() -> void:
 	
 	updateslabel.text=("Active pixels: "+str(updates))
 	updates=0
 	var ProccesedCells = {}
-	var cells:Array
+	
 	#automatically calculates active pixel ammount
-	for x in range(ActiveMaterialList.size()):
-		cells =cells + tilemap.get_used_cells_by_id(ActiveMaterialList[x])
+	var cells = active_cells.keys()
+	active_cells.clear()
+	if cells.is_empty():
+		return
 	#cells = tilemap.get_used_cells_by_id(1)+tilemap.get_used_cells_by_id(2)+tilemap.get_used_cells_by_id(4)
 	
 	
@@ -135,11 +162,14 @@ func _on_timer_timeout() -> void:
 					var ID=ID_SAND
 					var density=DensityList[ID_SAND-1]
 					
+					
 					if tilemap.get_cell_source_id(down)==-1 and not ProccesedCells.has(down) and not ProccesedCells.has(cell):
 						tilemap.set_cell(cell,-1)
 						tilemap.set_cell(down, ID,Vector2i(0, 0))
 						ProccesedCells[cell] = true
 						ProccesedCells[down] = true
+						wake_cell(cell)
+						wake_cell(down)
 					else:
 						if DensityList[tilemap.get_cell_source_id(down)-1]!=null:
 							if DensityList[tilemap.get_cell_source_id(down)-1]<density and not ProccesedCells.has(down) and not ProccesedCells.has(cell):
@@ -147,25 +177,36 @@ func _on_timer_timeout() -> void:
 								tilemap.set_cell(down, ID,Vector2i(0, 0))
 								ProccesedCells[cell] = true
 								ProccesedCells[down] = true
-								
+								wake_cell(cell)
+								wake_cell(down)
+								wake_cell(up)
 						if randi_range(0,1) ==1:
 							if tilemap.get_cell_source_id(left_bottom)==-1 and tilemap.get_cell_source_id(left)==-1 and not ProccesedCells.has(left_bottom) and not ProccesedCells.has(cell):
 								tilemap.set_cell(cell,-1)
 								tilemap.set_cell(left_bottom, ID,Vector2i(0, 0))
 								ProccesedCells[cell] = true
 								ProccesedCells[left_bottom] = true
+								wake_cell(cell)
+								wake_cell(left_bottom)
+								wake_cell(left)
 							elif DensityList[tilemap.get_cell_source_id(left)-1]!=null and DensityList[tilemap.get_cell_source_id(left_bottom)-1]!=null:
 								if DensityList[tilemap.get_cell_source_id(left_bottom)-1]<density and DensityList[tilemap.get_cell_source_id(left)-1]<density and not ProccesedCells.has(cell) and not ProccesedCells.has(left_bottom):
 									tilemap.set_cell(cell,tilemap.get_cell_source_id(left_bottom),Vector2i(0, 0))
 									tilemap.set_cell(left_bottom, ID,Vector2i(0, 0))
 									ProccesedCells[cell] = true
 									ProccesedCells[left_bottom] = true
+									wake_cell(cell)
+									wake_cell(left_bottom)
+									wake_cell(left)
 						else:
 							if tilemap.get_cell_source_id(right_bottom)==-1 and tilemap.get_cell_source_id(right)==-1 and not ProccesedCells.has(cell) and not ProccesedCells.has(right_bottom):
 								tilemap.set_cell(cell,-1)
 								tilemap.set_cell(right_bottom, ID,Vector2i(0, 0))
 								ProccesedCells[cell] = true
 								ProccesedCells[right_bottom] = true
+								wake_cell(cell)
+								wake_cell(right_bottom)
+								wake_cell(right)
 							
 							elif DensityList[tilemap.get_cell_source_id(right)-1]!=null and DensityList[tilemap.get_cell_source_id(right_bottom)-1]!=null:
 								if DensityList[tilemap.get_cell_source_id(right_bottom)-1]<density and DensityList[tilemap.get_cell_source_id(right)-1]<density and not ProccesedCells.has(cell) and not ProccesedCells.has(right_bottom):
@@ -173,6 +214,11 @@ func _on_timer_timeout() -> void:
 									tilemap.set_cell(right_bottom, ID,Vector2i(0, 0))
 									ProccesedCells[cell] = true
 									ProccesedCells[right_bottom] = true
+									wake_cell(cell)
+									wake_cell(right_bottom)
+									wake_cell(right)
+					if tilemap.get_cell_source_id(up) == ID_SAND:
+						wake_cell(up)
 				ID_WATER:
 					var ID=ID_WATER
 					WaterUpdates=WaterUpdates+1
@@ -190,7 +236,7 @@ func _on_timer_timeout() -> void:
 								tilemap.set_cell(down, ID,Vector2i(0, 0))
 								ProccesedCells[cell] = true
 								ProccesedCells[down] = true
-						if randi_range(1,0) ==1:
+						if randi_range(0,1) ==1:
 							if tilemap.get_cell_source_id(left)==-1 and not ProccesedCells.has(cell) and not ProccesedCells.has(left):
 								tilemap.set_cell(cell,-1)
 								tilemap.set_cell(left, ID,Vector2i(0, 0))
@@ -230,7 +276,7 @@ func _on_timer_timeout() -> void:
 								tilemap.set_cell(up, ID,Vector2i(0, 0))
 								ProccesedCells[cell] = true
 								ProccesedCells[up] = true
-						if randi_range(1,0) ==1:
+						if randi_range(0,1) ==1:
 							if tilemap.get_cell_source_id(left)==-1 and not ProccesedCells.has(cell) and not ProccesedCells.has(left):
 								tilemap.set_cell(cell,-1)
 								tilemap.set_cell(left, ID,Vector2i(0, 0))
