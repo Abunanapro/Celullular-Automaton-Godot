@@ -29,110 +29,118 @@ sources/3 = SubResource("TileSetAtlasSource_j5yw3")
 sources/4 = SubResource("TileSetAtlasSource_7lihs")
 
 [node name="Game" type="Node2D"]
+
+[node name="Game2" type="Node2D" parent="."]
 script = ExtResource("1_b2bpf")
 
-[node name="TileMapLayer" type="TileMapLayer" parent="."]
+[node name="TileMapLayer" type="TileMapLayer" parent="Game2"]
 scale = Vector2(0.4, 0.4)
 tile_set = SubResource("TileSet_74vwe")
 
-[node name="Timer" type="Timer" parent="."]
+[node name="Timer" type="Timer" parent="Game2"]
 wait_time = 0.1
 autostart = true
 
-[node name="water" type="Button" parent="."]
-offset_left = 7.0
-offset_top = 8.0
-offset_right = 60.0
-offset_bottom = 39.0
-text = "water"
-icon = ExtResource("3_b2bpf")
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
 
-[node name="dirt" type="Button" parent="."]
-offset_left = 85.0
-offset_top = 9.0
-offset_right = 141.0
+[node name="UI" type="Control" parent="CanvasLayer"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+mouse_filter = 2
+
+[node name="MarginContainer2" type="MarginContainer" parent="CanvasLayer/UI"]
+layout_mode = 1
+offset_right = 283.0
 offset_bottom = 40.0
-text = "dirt"
-icon = ExtResource("4_7lihs")
 
-[node name="sand" type="Button" parent="."]
-offset_left = 149.0
-offset_top = 10.0
-offset_right = 215.0
-offset_bottom = 41.0
+[node name="HBoxContainer" type="HBoxContainer" parent="CanvasLayer/UI/MarginContainer2"]
+layout_mode = 2
+
+[node name="sand" type="Button" parent="CanvasLayer/UI/MarginContainer2/HBoxContainer"]
+layout_mode = 2
 text = "sand"
 icon = ExtResource("2_kldst")
 
-[node name="steam" type="Button" parent="."]
-offset_left = 221.0
-offset_top = 9.0
-offset_right = 297.0
-offset_bottom = 40.0
+[node name="water" type="Button" parent="CanvasLayer/UI/MarginContainer2/HBoxContainer"]
+layout_mode = 2
+text = "water"
+icon = ExtResource("3_b2bpf")
+
+[node name="dirt" type="Button" parent="CanvasLayer/UI/MarginContainer2/HBoxContainer"]
+layout_mode = 2
+text = "dirt"
+icon = ExtResource("4_7lihs")
+
+[node name="steam" type="Button" parent="CanvasLayer/UI/MarginContainer2/HBoxContainer"]
+layout_mode = 2
 text = "steam"
 icon = ExtResource("5_b2bpf")
 
-[node name="LineEdit" type="LineEdit" parent="."]
-offset_left = 7.0
-offset_top = 610.0
-offset_right = 98.0
-offset_bottom = 641.0
-placeholder_text = "brush size"
+[node name="MarginContainer" type="MarginContainer" parent="CanvasLayer/UI"]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -54.0
+offset_bottom = 77.0
+grow_horizontal = 0
 
-[node name="clear" type="Button" parent="."]
-offset_left = 9.0
-offset_top = 571.0
-offset_right = 76.0
-offset_bottom = 602.0
+[node name="VBoxContainer" type="VBoxContainer" parent="CanvasLayer/UI/MarginContainer"]
+layout_mode = 2
+
+[node name="SandCount" type="Label" parent="CanvasLayer/UI/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "Sand:"
+
+[node name="WaterCount" type="Label" parent="CanvasLayer/UI/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "Water:"
+
+[node name="SteamCount" type="Label" parent="CanvasLayer/UI/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "Steam:"
+
+[node name="MarginContainer3" type="MarginContainer" parent="CanvasLayer/UI"]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -40.0
+offset_right = 40.0
+grow_vertical = 0
+
+[node name="HBoxContainer" type="HBoxContainer" parent="CanvasLayer/UI/MarginContainer3"]
+layout_mode = 2
+
+[node name="clear" type="Button" parent="CanvasLayer/UI/MarginContainer3/HBoxContainer"]
+layout_mode = 2
 text = "Clear"
 
-[node name="canvas" type="LineEdit" parent="."]
-offset_left = 107.0
-offset_top = 610.0
-offset_right = 209.0
-offset_bottom = 641.0
+[node name="brush" type="LineEdit" parent="CanvasLayer/UI/MarginContainer3/HBoxContainer"]
+layout_mode = 2
+placeholder_text = "brush size"
+
+[node name="canvas" type="LineEdit" parent="CanvasLayer/UI/MarginContainer3/HBoxContainer"]
+layout_mode = 2
 placeholder_text = "canvas size"
 
-[node name="time" type="LineEdit" parent="."]
-offset_left = 215.0
-offset_top = 609.0
-offset_right = 313.0
-offset_bottom = 640.0
+[node name="time" type="LineEdit" parent="CanvasLayer/UI/MarginContainer3/HBoxContainer"]
+layout_mode = 2
 text = "1"
 placeholder_text = "time speed"
 
-[node name="fpss" type="Label" parent="."]
-offset_left = 330.0
-offset_top = 616.0
-offset_right = 370.0
-offset_bottom = 639.0
+[node name="fpss" type="Label" parent="CanvasLayer/UI/MarginContainer3/HBoxContainer"]
+layout_mode = 2
 text = "FPS"
 
-[node name="updates" type="Label" parent="."]
-offset_left = 427.0
-offset_top = 617.0
-offset_right = 467.0
-offset_bottom = 640.0
+[node name="updates" type="Label" parent="CanvasLayer/UI/MarginContainer3/HBoxContainer"]
+layout_mode = 2
 text = "Pixels:"
 
-[node name="SandCount" type="Label" parent="."]
-offset_left = 868.0
-offset_top = 11.0
-offset_right = 911.0
-offset_bottom = 34.0
-text = "Sand:"
-
-[node name="WaterCount" type="Label" parent="."]
-offset_left = 864.0
-offset_top = 37.0
-offset_right = 916.0
-offset_bottom = 60.0
-text = "Water:"
-
-[node name="SteamCount" type="Label" parent="."]
-offset_left = 865.0
-offset_top = 61.0
-offset_right = 919.0
-offset_bottom = 84.0
-text = "Steam:"
-
-[connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]
+[connection signal="timeout" from="Game2/Timer" to="." method="_on_timer_timeout"]

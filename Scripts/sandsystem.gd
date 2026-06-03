@@ -13,25 +13,53 @@ var holding= false
 var SandUpdates = 0
 var WaterUpdates = 0
 # Called when the node enters the scene tree for the first time.
+
+#Interface Path Vars
+#labels
+#game stat labels
+@onready var fpslabel =$"../CanvasLayer/UI/MarginContainer3/HBoxContainer/fpss"
+@onready var updateslabel =$"../CanvasLayer/UI/MarginContainer3/HBoxContainer/updates"
+#material update labels
+@onready var SandCountLabel=$"../CanvasLayer/UI/MarginContainer/VBoxContainer/SandCount"
+@onready var WaterCountLabel=$"../CanvasLayer/UI/MarginContainer/VBoxContainer/WaterCount"
+@onready var SteamCountLabel=$"../CanvasLayer/UI/MarginContainer/VBoxContainer/SteamCount"
+#buttons
+#buttons-material
+@onready var sandbutton=$"../CanvasLayer/UI/MarginContainer2/HBoxContainer/sand"
+@onready var waterbutton=$"../CanvasLayer/UI/MarginContainer2/HBoxContainer/water"
+@onready var dirtbutton=$"../CanvasLayer/UI/MarginContainer2/HBoxContainer/dirt"
+@onready var steambutton=$"../CanvasLayer/UI/MarginContainer2/HBoxContainer/steam"
+#buttons-system
+@onready var clearbutton=$"../CanvasLayer/UI/MarginContainer3/HBoxContainer/time"
+#line edits
+@onready var brushlineedit=$"../CanvasLayer/UI/MarginContainer3/HBoxContainer/brush"
+@onready var canvaslineedit=$"../CanvasLayer/UI/MarginContainer3/HBoxContainer/canvas"
+@onready var timelineedit=$"../CanvasLayer/UI/MarginContainer3/HBoxContainer/time"
+
+
 func _ready() -> void:
-	pass # Replace with function body.
+	$Timer.timeout.connect(_on_timer_timeout) #this makes shure the signal is conneted ti timer
+	$Timer.start()   #starts timer just in case it is not starting for some weird reason...
 
 var last_canvas_text = ""
 var last_time_text=""
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta: float) -> void:
-	$fpss.text=("FPS: "+str(Engine.get_frames_per_second()))
-	$SandCount.text=("Sand: "+str(SandUpdates))
-	$WaterCount.text=("Water: "+str(WaterUpdates))
-	if $canvas.text != last_canvas_text:
-		last_canvas_text = $canvas.text
-		var scale_val = float($canvas.text) / 10.0
+
+	
+	
+	fpslabel.text=("FPS: "+str(Engine.get_frames_per_second()))
+	SandCountLabel.text=("Sand: "+str(SandUpdates))
+	WaterCountLabel.text=("Water: "+str(WaterUpdates))
+	if canvaslineedit.text != last_canvas_text:
+		last_canvas_text = canvaslineedit.text
+		var scale_val = float(canvaslineedit.text) / 10.0
 		$TileMapLayer.scale = Vector2(scale_val, scale_val)
-	if $time.text!=last_time_text:
-		last_time_text=$time.text
-		$Timer.wait_time=0.1/float($time.text)
+	if timelineedit.text!=last_time_text:
+		last_time_text=timelineedit.text
+		$Timer.wait_time=0.1/float(timelineedit.text)
 		$Timer.start()
-	if $clear.button_pressed==true:
+	if $"../CanvasLayer/UI/MarginContainer3/HBoxContainer/clear".button_pressed==true:
 		$TileMapLayer.clear()
 	if holding:
 		var mouse_pos = get_viewport().get_mouse_position()
@@ -42,14 +70,14 @@ func _process(delta: float) -> void:
 				$TileMapLayer.set_cell(tilexy+Vector2i(n,i), brush, Vector2i(0, 0))
 		
 func updatebrush():
-	brush_size=int($LineEdit.text)
-	if $water.button_pressed==true:
+	brush_size=int(brushlineedit.text)
+	if waterbutton.button_pressed==true:
 		brush=ID_WATER
-	elif $dirt.button_pressed==true:
+	elif dirtbutton.button_pressed==true:
 		brush=ID_DIRT
-	elif $sand.button_pressed==true:
+	elif sandbutton.button_pressed==true:
 		brush=ID_SAND
-	elif  $steam.button_pressed==true:
+	elif  steambutton.button_pressed==true:
 		brush=ID_STEAM
 
 func _input(event:InputEvent) -> void:
@@ -196,4 +224,4 @@ func _on_timer_timeout() -> void:
 						if $TileMapLayer.get_cell_source_id(right)==-1:
 							$TileMapLayer.set_cell(cell,-1)
 							$TileMapLayer.set_cell(right, ID_STEAM,Vector2i(0, 0))
-	$updates.text=("Active pixels: "+str(updates))
+	updateslabel.text=("Active pixels: "+str(updates))
