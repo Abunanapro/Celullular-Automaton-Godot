@@ -8,6 +8,8 @@ const ID_STEAM =4
 const DensityList=[1.5,1,null,0.5]
 const ActiveMaterialList=[1,2,4] #Place here material IDS that you want to "tick"
 var holding= false
+var delete=false
+var lastmaterialbrush=ID_SAND
 
 #Stat Vars
 var SandUpdates = 0
@@ -67,22 +69,31 @@ func _process(delta: float) -> void:
 		var tilexy = tilemap.local_to_map(tilemap.to_local(mouse_pos))
 		var offset = floor(brush_size / 2.0)
 		tilemap.set_cell(tilexy, brush, Vector2i(0, 0))
+		
 		for n in brush_size:
 			for i in brush_size:
 				var pos = tilexy + Vector2i(n - offset, i - offset)
 				tilemap.set_cell(pos, brush, Vector2i(0, 0))
+				
 		
 func updatebrush():
 	brush_size=int(brushlineedit.text)
 	if waterbutton.button_pressed==true:
 		brush=ID_WATER
+		lastmaterialbrush=ID_WATER
 	elif dirtbutton.button_pressed==true:
 		brush=ID_DIRT
+		lastmaterialbrush=ID_DIRT
 	elif sandbutton.button_pressed==true:
 		brush=ID_SAND
+		lastmaterialbrush=ID_SAND
 	elif  steambutton.button_pressed==true:
 		brush=ID_STEAM
+		lastmaterialbrush=ID_STEAM
+	if delete==true:
+		brush=-1
 
+	
 func _input(event:InputEvent) -> void:
 	if get_viewport().gui_get_hovered_control() != null:
 		updatebrush()
@@ -93,14 +104,21 @@ func _input(event:InputEvent) -> void:
 		var tilexy=tilemap.local_to_map(tilemap.to_local(event.position))
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			holding = event.pressed
+			
+			delete=false
+			brush=lastmaterialbrush
+			
 			updatebrush()
 			tilemap.set_cell(tilexy,brush,Vector2i(0,0))
+			
 		if event.button_index == MOUSE_BUTTON_RIGHT:
 			holding = event.pressed
 			tilemap.set_cell(tilexy,brush,Vector2i(-1,-1))
+			
+			delete=true
+			updatebrush()
+			
 		
-		
-
 func _on_timer_timeout() -> void:
 	
 	updateslabel.text=("Active pixels: "+str(updates))
