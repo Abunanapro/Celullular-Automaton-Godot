@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bgvqphgkl3oi7"
-path="res://.godot/imported/index.png-0c78d14d192abe5f22f8c25928ca1ab8.ctex"
+uid="uid://62os80cspdbv"
+path="res://.godot/imported/__ia_thumb.jpg-54c646bbe344204a322a46653b88d823.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://docs/index.png"
-dest_files=["res://.godot/imported/index.png-0c78d14d192abe5f22f8c25928ca1ab8.ctex"]
+source_file="res://Textures/Fonts/minecraft-seven/__ia_thumb.jpg"
+dest_files=["res://.godot/imported/__ia_thumb.jpg-54c646bbe344204a322a46653b88d823.ctex"]
 
 [params]
 

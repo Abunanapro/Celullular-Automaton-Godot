@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<files>
+  <file name="Minecraft-Seven_v2.woff2" source="original">
+    <mtime>1779672433</mtime>
+    <size>14060</size>
+    <md5>eec2a5718733fcdffe0df546d7614dcc</md5>
+    <crc32>6d1d02e3</crc32>
+    <sha1>ac11cca9160a2872cedc96c584be853adffe21a7</sha1>
+    <format>Web Open Font Format 2.0</format>
+    <viruscheck>1779672806</viruscheck>
+  </file>
+  <file name="MinecraftDefault-Bold.ttf" source="original">
+    <mtime>1779672399</mtime>
+    <size>218588</size>
+    <md5>d9c8f00d74c1ba1c30386961a53ef861</md5>
+    <crc32>4a5ffa6d</crc32>
+    <sha1>3adde7bcf97392e955a7c2b2f97718d474bb8b81</sha1>
+    <format>TrueType Font</format>
+    <viruscheck>1779672806</viruscheck>
+  </file>
+  <file name="MinecraftDefault-BoldItalic.ttf" source="original">
+    <mtime>1779672416</mtime>
+    <size>243064</size>
+    <md5>5c25ce52ec22d3ab5144f0339bef6a30</md5>
+    <crc32>d155d937</crc32>
+    <sha1>2e8b92483a7a747751eed15785a780742bcc46fb</sha1>
+    <format>TrueType Font</format>
+    <viruscheck>1779672806</viruscheck>
+  </file>
+  <file name="MinecraftDefault-Italic.ttf" source="original">
+    <mtime>1779672419</mtime>
+    <size>262788</size>
+    <md5>084b8d5e3985b1c26c3af0eb597ca5eb</md5>
+    <crc32>354ce21e</crc32>
+    <sha1>32328b3de706008d8770c1d38d60c45100040186</sha1>
+    <format>TrueType Font</format>
+    <viruscheck>1779672806</viruscheck>
+  </file>
+  <file name="MinecraftDefault-Regular.ttf" source="original">
+    <mtime>1779672422</mtime>
+    <size>235228</size>
+    <md5>30ecc6201ddc637be575675d03bb8f45</md5>
+    <crc32>a21fb604</crc32>
+    <sha1>94c892b571b5a804e397f0ae82142cfc86d8ccfb</sha1>
+    <format>TrueType Font</format>
+    <viruscheck>1779672806</viruscheck>
+  </file>
+  <file name="MinecraftSeven.woff" source="original">
+    <mtime>1779672428</mtime>
+    <size>47140</size>
+    <md5>a3eced263d69f94668d2534d6bb4889b</md5>
+    <crc32>86babce3</crc32>
+    <sha1>94a56d9f1e4fd085c56d83d9ac9a13525b199a7a</sha1>
+    <format>Web Open Font Format</format>
+    <viruscheck>1779672806</viruscheck>
+  </file>
+  <file name="Minecraft_font_specimen.png" source="original">
+    <mtime>1779673463</mtime>
+    <size>1107</size>
+    <md5>569dec16a6c67fa8ca50be6de3b9892e</md5>
+    <crc32>93c3cf3a</crc32>
+    <sha1>21b79d7ef1fd98bfb37e44de7cd26d535397069c</sha1>
+    <format>PNG</format>
+  </file>
+  <file name="Minecraft_font_specimen_thumb.jpg" source="derivative">
+    <format>JPEG Thumb</format>
+    <original>Minecraft_font_specimen.png</original>
+    <mtime>1779673497</mtime>
+    <size>9370</size>
+    <md5>75163091ae071f02b627f512b89a8728</md5>
+    <crc32>21aeb46e</crc32>
+    <sha1>009a77c7497800d55492c6953e7f03fc3eb9e7be</sha1>
+  </file>
+  <file name="__ia_thumb.jpg" source="original">
+    <mtime>1779673472</mtime>
+    <size>15577</size>
+    <md5>b4d1e8d0a91c2ae6ab9d9971dc6f684d</md5>
+    <crc32>73c75bec</crc32>
+    <sha1>715260241f59248d954e193b5e3b1dac48f367e9</sha1>
+    <format>Item Tile</format>
+  </file>
+  <file name="minecraft-seven_archive.torrent" source="metadata">
+    <btih>e0c086947ead85f1988a929f713f65933b73bdd2</btih>
+    <mtime>1779821088</mtime>
+    <size>3497</size>
+    <md5>bb794a318338e7fb89ce45291dc2589e</md5>
+    <crc32>ceec1499</crc32>
+    <sha1>5f032de49474fb589058bdc80081221397a506c1</sha1>
+    <format>Archive BitTorrent</format>
+  </file>
+  <file name="minecraft-seven_files.xml" source="original">
+    <format>Metadata</format>
+    <md5>574a988f27e5f5026390d782fb65e954</md5>
+    <summation>md5</summation>
+  </file>
+  <file name="minecraft-seven_meta.sqlite" source="original">
+    <mtime>1779673468</mtime>
+    <size>53248</size>
+    <md5>c61c06823cd8fdc1e4161d3e9f34b06d</md5>
+    <crc32>cd9069fa</crc32>
+    <sha1>662db568a197911cb728a253b8fc59252936adca</sha1>
+    <format>Metadata</format>
+  </file>
+  <file name="minecraft-seven_meta.xml" source="original">
+    <mtime>1779821087</mtime>
+    <size>1438</size>
+    <md5>5ef35adde4cead8149a5b1c9c99fe712</md5>
+    <crc32>3072dd1d</crc32>
+    <sha1>ad160d22671b288ee9cf09ba6a4aacd7a1c0591d</sha1>
+    <format>Metadata</format>
+  </file>
+  <file name="minecraftfont.woff" source="original">
+    <mtime>1779672424</mtime>
+    <size>4100</size>
+    <md5>81328b4d84f523a5971af9becf758240</md5>
+    <crc32>8e7ac470</crc32>
+    <sha1>ca908e09ce39389ab548eac780553a7a5aad2818</sha1>
+    <format>Web Open Font Format</format>
+    <viruscheck>1779672806</viruscheck>
+  </file>
+  <file name="seven.ttf" source="original">
+    <mtime>1779672436</mtime>
+    <size>188416</size>
+    <md5>db6ae28524e12fd4cd3027e1c8850b00</md5>
+    <crc32>6ffe1e12</crc32>
+    <sha1>3d009535ec7860c29603cd66cdb4db5c8b4aefd2</sha1>
+    <format>TrueType Font</format>
+    <viruscheck>1779672806</viruscheck>
+  </file>
+</files>
