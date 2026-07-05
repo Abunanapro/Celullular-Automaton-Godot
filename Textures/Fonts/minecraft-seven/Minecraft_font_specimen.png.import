@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bgvqphgkl3oi7"
-path="res://.godot/imported/index.png-0c78d14d192abe5f22f8c25928ca1ab8.ctex"
+uid="uid://c36xklgv0nyo5"
+path="res://.godot/imported/Minecraft_font_specimen.png-c02137c9f3e7d903ec2ff3c1682bf8e6.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://docs/index.png"
-dest_files=["res://.godot/imported/index.png-0c78d14d192abe5f22f8c25928ca1ab8.ctex"]
+source_file="res://Textures/Fonts/minecraft-seven/Minecraft_font_specimen.png"
+dest_files=["res://.godot/imported/Minecraft_font_specimen.png-c02137c9f3e7d903ec2ff3c1682bf8e6.ctex"]
 
 [params]
 
