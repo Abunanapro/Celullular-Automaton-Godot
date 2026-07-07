@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3 uid="uid://nlqdtlnwamo6"]
+[gd_scene load_steps=16 format=3 uid="uid://nlqdtlnwamo6"]
 
 [ext_resource type="Script" uid="uid://fu4hemtnqy6w" path="res://Scripts/sandsystem.gd" id="1_b2bpf"]
 [ext_resource type="Texture2D" uid="uid://d3c5hdobsa5kq" path="res://Textures/sand.png" id="2_kldst"]
@@ -6,6 +6,7 @@
 [ext_resource type="Texture2D" uid="uid://b641gwgq60gee" path="res://Textures/dirt.png" id="4_7lihs"]
 [ext_resource type="Texture2D" uid="uid://cd1dlxynoa7vl" path="res://Textures/steam.png" id="5_b2bpf"]
 [ext_resource type="Texture2D" uid="uid://bqoldkipkvsqn" path="res://Textures/GUI textures/config.png" id="6_7lihs"]
+[ext_resource type="Script" uid="uid://c223ka8rqhgdd" path="res://Scenes/mouse_previewer.gd" id="6_bf53h"]
 [ext_resource type="Texture2D" uid="uid://dk5ltye3ej1w0" path="res://icon.png" id="7_fgofq"]
 [ext_resource type="FontFile" uid="uid://bdc17o426iqte" path="res://Textures/Fonts/minecraft-seven/seven.ttf" id="8_2irst"]
 
@@ -20,12 +21,14 @@ texture = ExtResource("3_b2bpf")
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_j5yw3"]
 texture = ExtResource("4_7lihs")
 0:0/0 = 0
+0:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_7lihs"]
 texture = ExtResource("5_b2bpf")
 0:0/0 = 0
 
 [sub_resource type="TileSet" id="TileSet_74vwe"]
+physics_layer_0/collision_layer = 1
 sources/1 = SubResource("TileSetAtlasSource_maiyi")
 sources/2 = SubResource("TileSetAtlasSource_gl6un")
 sources/3 = SubResource("TileSetAtlasSource_j5yw3")
@@ -225,10 +228,12 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_2irst")
 
 [node name="MarginContainer" type="MarginContainer" parent="setingsmenu/Control/MarginContainer"]
 layout_mode = 2
-theme_override_constants/margin_top = 10
+size_flags_horizontal = 4
+theme_override_constants/margin_top = 20
 
 [node name="VBoxContainer" type="VBoxContainer" parent="setingsmenu/Control/MarginContainer/MarginContainer"]
 layout_mode = 2
+size_flags_stretch_ratio = 0.0
 
 [node name="tittle" type="HBoxContainer" parent="setingsmenu/Control/MarginContainer/MarginContainer/VBoxContainer"]
 layout_mode = 2
@@ -256,11 +261,12 @@ flip_h = true
 
 [node name="Volume" type="HBoxContainer" parent="setingsmenu/Control/MarginContainer/MarginContainer/VBoxContainer"]
 layout_mode = 2
-theme_override_constants/separation = 55
+size_flags_horizontal = 4
 
 [node name="VolumeLabel" type="Label" parent="setingsmenu/Control/MarginContainer/MarginContainer/VBoxContainer/Volume"]
 layout_mode = 2
 size_flags_horizontal = 8
+theme_override_constants/line_spacing = 3
 theme_override_fonts/font = ExtResource("8_2irst")
 theme_override_font_sizes/font_size = 20
 text = "Volume"
@@ -275,8 +281,11 @@ ticks_on_borders = true
 
 [node name="Canvas Size" type="HBoxContainer" parent="setingsmenu/Control/MarginContainer/MarginContainer/VBoxContainer"]
 layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
 
 [node name="CanvasScaleLabel" type="Label" parent="setingsmenu/Control/MarginContainer/MarginContainer/VBoxContainer/Canvas Size"]
+custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
 theme_override_fonts/font = ExtResource("8_2irst")
 theme_override_font_sizes/font_size = 20
@@ -290,5 +299,45 @@ step = 0.1
 value = 5.0
 tick_count = 10
 ticks_on_borders = true
+
+[node name="Brush Size" type="HBoxContainer" parent="setingsmenu/Control/MarginContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="Brushsizelabel" type="Label" parent="setingsmenu/Control/MarginContainer/MarginContainer/VBoxContainer/Brush Size"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_override_fonts/font = ExtResource("8_2irst")
+theme_override_font_sizes/font_size = 20
+text = "Canvas Size"
+
+[node name="BrushSizeSlider" type="HSlider" parent="setingsmenu/Control/MarginContainer/MarginContainer/VBoxContainer/Brush Size"]
+custom_minimum_size = Vector2(200, 28.635)
+layout_mode = 2
+min_value = 1.0
+value = 1.0
+rounded = true
+tick_count = 10
+ticks_on_borders = true
+
+[node name="dispersion" type="HBoxContainer" parent="setingsmenu/Control/MarginContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="Brushsizelabel" type="Label" parent="setingsmenu/Control/MarginContainer/MarginContainer/VBoxContainer/dispersion"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_override_fonts/font = ExtResource("8_2irst")
+theme_override_font_sizes/font_size = 20
+text = "Gas/Liquid dispersion"
+
+[node name="CheckButton" type="CheckButton" parent="setingsmenu/Control/MarginContainer/MarginContainer/VBoxContainer/dispersion"]
+layout_mode = 2
+button_pressed = true
+
+[node name="MousePreview" type="CanvasLayer" parent="."]
+
+[node name="mouse" type="Node2D" parent="MousePreview"]
+script = ExtResource("6_bf53h")
+
+[node name="Sprite2D" type="Sprite2D" parent="MousePreview/mouse"]
 
 [connection signal="timeout" from="Game2/Timer" to="." method="_on_timer_timeout"]

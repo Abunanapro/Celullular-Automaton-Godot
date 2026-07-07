@@ -6,9 +6,11 @@ const ID_WATER =2
 const ID_DIRT  = 3
 const ID_STEAM =4
 const DensityList=[1.5,1,99,0.5]
-const DispersionList=[2,5,0,5]
+const CDispersionList=[2,5,0,5]
+var DispersionList=[2,5,0,5]
 const ActiveMaterialList=[1,2,4] #Place here material IDS that you want to "tick"
 var holding= false
+var holdingDelete=false
 var delete=false
 var lastmaterialbrush=ID_SAND
 #Config Vars
@@ -35,6 +37,7 @@ var SteamUpdates = 0
 #setings menu labels
 @onready var VolumeLabel=$"../setingsmenu/Control/MarginContainer/MarginContainer/VBoxContainer/Volume/VolumeLabel"
 @onready var CanvasScaleLabel=$"../setingsmenu/Control/MarginContainer/MarginContainer/VBoxContainer/Canvas Size/CanvasScaleLabel"
+@onready var BrushSizeLabel=$"../setingsmenu/Control/MarginContainer/MarginContainer/VBoxContainer/Brush Size/Brushsizelabel"
 #buttons
 #buttons-material
 @onready var sandbutton=$"../CanvasLayer/UI/MarginContainer2/HBoxContainer/sand"
@@ -50,18 +53,34 @@ var settings_was_pressed = false
 #Settings Menu Sliders
 @onready var volumeslider=$"../setingsmenu/Control/MarginContainer/MarginContainer/VBoxContainer/Volume/VolumeSlider"
 @onready var canvasscaleslider=$"../setingsmenu/Control/MarginContainer/MarginContainer/VBoxContainer/Canvas Size/CanvasSizeSlider"
+@onready var brushsizeslider=$"../setingsmenu/Control/MarginContainer/MarginContainer/VBoxContainer/Brush Size/BrushSizeSlider"
+#settings menu check buttons
+@onready var DispersionButton=$"../setingsmenu/Control/MarginContainer/MarginContainer/VBoxContainer/dispersion/CheckButton"
 #line edits
 @onready var brushlineedit=$"../CanvasLayer/UI/MarginContainer3/HBoxContainer/brush"
 @onready var canvaslineedit=$"../CanvasLayer/UI/MarginContainer3/HBoxContainer/canvas"
 @onready var timelineedit=$"../CanvasLayer/UI/MarginContainer3/HBoxContainer/time"
+
 #camera movement
 var panning = false
-var pan_speed = 400.0
+var pan_speed = 1500.0
 #updates
 @onready var updates=0
 func _ready() -> void:
 	timer.timeout.connect(_on_timer_timeout) #this makes shure the signal is conneted ti timer
 	timer.start()   #starts timer just in case it is not starting for some weird reason...
+		# Fix label widths and prevent them from expanding/shrinking
+	VolumeLabel.custom_minimum_size.x = 60
+	VolumeLabel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	VolumeLabel.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	
+	CanvasScaleLabel.custom_minimum_size.x = 60
+	CanvasScaleLabel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	CanvasScaleLabel.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	
+	# Make sliders take all leftover space so they stay locked
+	volumeslider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	canvasscaleslider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	
 
 var last_time_text=""
@@ -69,11 +88,16 @@ var last_time_text=""
 var scale_val=4.0/10.0
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta: float) -> void:
+	if holding and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or holdingDelete and not Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
+		holding = false
+		holdingDelete=false
+		
+	
 	fpslabel.text=("FPS: "+str(Engine.get_frames_per_second()))
 	SandCountLabel.text=("Sand: "+str(SandUpdates))
 	WaterCountLabel.text=("Water: "+str(WaterUpdates))
 	SteamCountLabel.text=("Steam: "+str(SteamUpdates))
-
+	BrushSizeLabel.text=str("brush size:"+str(brush_size))
 	if timelineedit.text!=last_time_text:
 		last_time_text=timelineedit.text
 		timer.wait_time=0.1/float(timelineedit.text)
@@ -96,10 +120,13 @@ func _process(delta: float) -> void:
 		tilemap.position = m - (m - tilemap.position) * (new_s / old_s)
 		tilemap.scale = Vector2(new_s, new_s)
 	CanvasScaleLabel.text = "Scale: %.1fx" % new_s
-	
-	
+#dispersion toggle
+	if DispersionButton.button_pressed==true:
+		DispersionList=CDispersionList
+	else:
+		DispersionList=[2,2,0,2]
 	#Main
-	if holding:
+	if holding or holdingDelete:
 		var mouse_pos = get_viewport().get_mouse_position()
 		var tilexy = tilemap.local_to_map(tilemap.to_local(mouse_pos))
 		var offset = floor(brush_size / 2.0)
@@ -116,7 +143,7 @@ func _process(delta: float) -> void:
 	if dir != Vector2.ZERO:
 		tilemap.position += dir.normalized() * pan_speed * delta
 func updatebrush():
-	brush_size=int(brushlineedit.text)
+	brush_size=brushsizeslider.value
 	if waterbutton.button_pressed==true:
 		brush=ID_WATER
 		lastmaterialbrush=ID_WATER
@@ -148,24 +175,31 @@ func _input(event:InputEvent) -> void:
 			brush=lastmaterialbrush
 			
 			updatebrush()
+			
 			tilemap.set_cell(tilexy,brush,Vector2i(0,0))
 			
 		if event.button_index == MOUSE_BUTTON_RIGHT:
-			holding = event.pressed
+			holdingDelete = event.pressed
 			tilemap.set_cell(tilexy,brush,Vector2i(-1,-1))
 			
 			delete=true
 			updatebrush()
-			
+	
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_MIDDLE:
 		panning = event.pressed
 	
 	if event is InputEventMouseMotion and panning:
 		tilemap.position += event.relative
 	if event is InputEventMouseButton and event.pressed:
-		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP and Input.is_key_pressed(KEY_CTRL):
+			brushsizeslider.value = min(100.0, brushsizeslider.value + 1)
+		
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and Input.is_key_pressed(KEY_CTRL):
+			brushsizeslider.value = max(1.0, brushsizeslider.value - 1)
+		elif event.button_index == MOUSE_BUTTON_WHEEL_UP :
 			canvasscaleslider.value = min(10.0, canvasscaleslider.value + 0.1)
-		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+		
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN :
 			canvasscaleslider.value = max(0.1, canvasscaleslider.value - 0.1)
 	
 func _on_timer_timeout() -> void:
@@ -246,8 +280,7 @@ func _on_timer_timeout() -> void:
 					WaterUpdates=WaterUpdates+1
 					var density=DensityList[ID_WATER-1]
 					var dispersion =DispersionList[ID_WATER-1]
-					if dispersioning==false:
-						dispersion=2
+					
 					if tilemap.get_cell_source_id(down)==-1 and not ProccesedCells.has(cell) and not ProccesedCells.has(down):
 						tilemap.set_cell(cell,-1)
 						tilemap.set_cell(down, ID,Vector2i(0, 0))
