@@ -12,23 +12,53 @@
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_maiyi"]
 texture = ExtResource("2_kldst")
+0:0/next_alternative_id = 9
 0:0/0 = 0
+0:0/1 = 1
+0:0/1/modulate = Color(0.96474224, 0.96474224, 0.9647421, 1)
+0:0/2 = 2
+0:0/2/modulate = Color(1.0576311, 1.0576311, 1.0576311, 1)
+0:0/3 = 3
+0:0/3/modulate = Color(1, 0.998, 0.97, 1)
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_gl6un"]
 texture = ExtResource("3_b2bpf")
+0:0/next_alternative_id = 4
 0:0/0 = 0
+0:0/1 = 1
+0:0/1/modulate = Color(0.97, 0.97, 0.97, 1)
+0:0/2 = 2
+0:0/2/modulate = Color(0.98, 0.98, 0.98, 1)
+0:0/3 = 3
+0:0/3/modulate = Color(0.96, 0.96, 0.96, 1)
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_j5yw3"]
 texture = ExtResource("4_7lihs")
+0:0/next_alternative_id = 4
 0:0/0 = 0
 0:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
+0:0/1 = 1
+0:0/1/modulate = Color(0.9, 0.9, 0.9, 1)
+0:0/2 = 2
+0:0/2/modulate = Color(0.95, 0.95, 0.95, 1)
+0:0/3 = 3
+0:0/3/modulate = Color(0.97, 0.97, 0.97, 1)
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_7lihs"]
 texture = ExtResource("5_b2bpf")
+0:0/next_alternative_id = 4
 0:0/0 = 0
+0:0/1 = 1
+0:0/1/modulate = Color(0.9, 0.9, 0.9, 1)
+0:0/2 = 2
+0:0/2/modulate = Color(0.95, 0.95, 0.95, 1)
+0:0/3 = 3
+0:0/3/modulate = Color(0.97, 0.97, 0.97, 1)
 
 [sub_resource type="TileSet" id="TileSet_74vwe"]
 physics_layer_0/collision_layer = 1
+custom_data_layer_0/name = "temperature"
+custom_data_layer_0/type = 3
 sources/1 = SubResource("TileSetAtlasSource_maiyi")
 sources/2 = SubResource("TileSetAtlasSource_gl6un")
 sources/3 = SubResource("TileSetAtlasSource_j5yw3")
