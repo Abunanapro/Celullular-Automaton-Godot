@@ -334,36 +334,42 @@ func _on_timer_timeout() -> void:
 						tilemap.set_cell(up, ID,Vector2i(0, 0))
 						ProccesedCells[cell] = true
 						ProccesedCells[up] = true
+					elif DensityList[tilemap.get_cell_source_id(up)-1]<density and not ProccesedCells.has(cell) and not ProccesedCells.has(up):
+						tilemap.set_cell(cell,tilemap.get_cell_source_id(up),Vector2i(0, 0))
+						tilemap.set_cell(up, ID,Vector2i(0, 0))
+						ProccesedCells[cell] = true
+						ProccesedCells[up] = true
+						
 					else:
-						if DensityList[tilemap.get_cell_source_id(up)-1]!=null:
-							if DensityList[tilemap.get_cell_source_id(up)-1]<density and not ProccesedCells.has(cell) and not ProccesedCells.has(up):
-								tilemap.set_cell(cell,tilemap.get_cell_source_id(up),Vector2i(0, 0))
-								tilemap.set_cell(up, ID,Vector2i(0, 0))
+						
+						var d = 1 if randi_range(0, 1) == 1 else -1 #outputs a random number 1 or -1, that later becomes the direction
+						var target=null
+						
+						for x in range(1,dispersion):
+							if tilemap.get_cell_source_id(cell+Vector2i(d*x,0))!=-1 : #check if cell not empty
+								if DensityList[tilemap.get_cell_source_id(cell+Vector2i(d*x,0))-1]>density :
+										target=cell+Vector2i(d*x-d,0)
+										break
+							if x==dispersion-1:
+								target=cell+Vector2i(d*x-d,0)
+						
+									
+						if randi_range(0,1)==1:
+							if target!=null and not ProccesedCells.has(cell) and not ProccesedCells.has(target) and tilemap.get_cell_source_id(target)==-1:
+								tilemap.set_cell(cell,tilemap.get_cell_source_id(target))
+								tilemap.set_cell(target, ID,Vector2i(0, 0))
 								ProccesedCells[cell] = true
-								ProccesedCells[up] = true
-						if randi_range(1,0) ==1:
-							if tilemap.get_cell_source_id(left)==-1 and not ProccesedCells.has(cell) and not ProccesedCells.has(left):
+								ProccesedCells[target] = true
+						else:
+							if d==1 and tilemap.get_cell_source_id(left)==-1 and not ProccesedCells.has(cell) and not ProccesedCells.has(left):
 								tilemap.set_cell(cell,-1)
 								tilemap.set_cell(left, ID,Vector2i(0, 0))
 								ProccesedCells[cell] = true
 								ProccesedCells[left] = true
-							elif DensityList[tilemap.get_cell_source_id(left)-1]!=null:
-								if DensityList[tilemap.get_cell_source_id(left)-1]<density  and not ProccesedCells.has(cell) and not ProccesedCells.has(right):
-									tilemap.set_cell(cell,tilemap.get_cell_source_id(left),Vector2i(0, 0))
-									tilemap.set_cell(left, ID,Vector2i(0, 0))
-									ProccesedCells[cell] = true
-									ProccesedCells[left] = true
-						else:
-							if tilemap.get_cell_source_id(right)==-1 and not ProccesedCells.has(cell) and not ProccesedCells.has(right):
+							elif d==-1 and tilemap.get_cell_source_id(right)==-1 and not ProccesedCells.has(cell) and not ProccesedCells.has(right):
 								tilemap.set_cell(cell,-1)
 								tilemap.set_cell(right, ID,Vector2i(0, 0))
 								ProccesedCells[cell] = true
 								ProccesedCells[right] = true
-							elif DensityList[tilemap.get_cell_source_id(right)-1]!=null:
-								if DensityList[tilemap.get_cell_source_id(right)-1]<density  and not ProccesedCells.has(cell) and not ProccesedCells.has(right):
-									tilemap.set_cell(cell,tilemap.get_cell_source_id(right),Vector2i(0, 0))
-									tilemap.set_cell(right, ID,Vector2i(0, 0))
-									ProccesedCells[cell] = true
-									ProccesedCells[right] = true
 		
 		
