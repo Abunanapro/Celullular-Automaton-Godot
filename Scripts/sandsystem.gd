@@ -228,7 +228,84 @@ func _input(event:InputEvent) -> void:
 		
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN :
 			canvasscaleslider.value = max(0.1, canvasscaleslider.value - 0.1)
+#----------------------------------------------------------------
+#Usefull FUNCTIONSS!!! i need this because I have to adapt the code to the new temperature map
+
+# Moves a material from `from` to `to`, carrying its temperature with it.
+# 
+func move_material(from: Vector2i, to: Vector2i, id: int, alt_tile: int) -> void:
+	tilemap.set_cell(to, id, Vector2i(0, 0), alt_tile)
+	temperature_map[to] = temperature_map.get(from, 20)
+	tilemap.set_cell(from, -1)
+	temperature_map.erase(from)
+
+# Swaps two materials' tiles AND their temperatures.
+# usefull for temperature 
+func swap_material(a: Vector2i, b: Vector2i) -> void:
+	var a_id = tilemap.get_cell_source_id(a)
+	var a_alt = tilemap.get_cell_alternative_tile(a)
+	var b_id = tilemap.get_cell_source_id(b)
+	var b_alt = tilemap.get_cell_alternative_tile(b)
+	var a_temp = temperature_map.get(a, 20)
+	var b_temp = temperature_map.get(b, 20)
+
+	tilemap.set_cell(a, b_id, Vector2i(0, 0), b_alt)
+	tilemap.set_cell(b, a_id, Vector2i(0, 0), a_alt)
+	temperature_map[a] = b_temp
+	temperature_map[b] = a_temp
+
+# Handles gas/liquid-like movement: water falls, steam rises, and if blocked
+# in that primary direction, they spread sideways looking for a gap.
+#
+# `dir` is the "preferred" direction of travel:
+#   Vector2i(0, 1)  = down (water)
+#   Vector2i(0, -1) = up   (steam)
+func simulate_fluid(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Dictionary) -> void:
+	var density = DensityList[ID - 1]
+	var dispersion = DispersionList[ID - 1] # how many tiles sideways this material can "look" for a gap
+	var variation = tilemap.get_cell_alternative_tile(cell)
+	var fwd = cell + dir # the cell directly in the preferred direction (down for water, up for steam)
 	
+	#Case 1 just moving when nothing is blocking
+	if tilemap.get_cell_source_id(fwd)==-1 and not ProccesedCells.has(cell) and not ProccesedCells.has(fwd):
+		move_material(cell,fwd,ID,variation)
+		ProccesedCells[cell] = true
+		ProccesedCells[fwd] = true
+		return
+	#Case 2 the cell where we want to move to is occupied by something less dense than our material
+	if tilemap.get_cell_source_id(fwd) != -1 and DensityList[tilemap.get_cell_source_id(fwd) - 1] < density and not ProccesedCells.has(cell) and not ProccesedCells.has(fwd):
+		swap_material(cell, fwd)
+		ProccesedCells[cell] = true
+		ProccesedCells[fwd] = true
+		return
+	#Case 3 where we want to move tho is occupied by smth denser or with equal density 
+	var d = 1 if randi_range(0, 1) == 1 else -1 #outputs a random number 1 or -1, that later becomes the direction
+	var target=null
+	for x in range(1,dispersion):
+		if tilemap.get_cell_source_id(cell+Vector2i(d*x,0))!=-1 : #check if cell not empty
+			if DensityList[tilemap.get_cell_source_id(cell+Vector2i(d*x,0))-1]>density :
+					target=cell+Vector2i(d*x-d,0)
+					break
+		if x==dispersion-1:
+			target=cell+Vector2i(d*x-d,0)
+	#case 3.1 we found our target and we move to it
+					
+	if randi_range(0,1)==1:
+		if target!=null and not ProccesedCells.has(cell) and not ProccesedCells.has(target) and tilemap.get_cell_source_id(target)==-1:
+			move_material(cell, target, ID, variation)
+			ProccesedCells[cell] = true
+			ProccesedCells[target] = true
+	#case 3.2 we found no target so we move sideways
+	else:
+		if tilemap.get_cell_source_id(cell + Vector2i(-d, 0)) == -1 and not ProccesedCells.has(cell) and not ProccesedCells.has(cell + Vector2i(-d, 0)):
+			move_material(cell, cell + Vector2i(-d, 0), ID, variation)
+			ProccesedCells[cell] = true
+			ProccesedCells[cell + Vector2i(-d, 0)] = true
+
+
+
+
+
 func _on_timer_timeout() -> void:
 	
 	updateslabel.text=("Active pixels: "+str(updates))
@@ -304,102 +381,14 @@ func _on_timer_timeout() -> void:
 									ProccesedCells[cell] = true
 									ProccesedCells[right_bottom] = true
 				ID_WATER:
-					var ID=ID_WATER
+					simulate_fluid(cell,ID_WATER,Vector2i(0,1),ProccesedCells)
 					WaterUpdates=WaterUpdates+1
-					var density=DensityList[ID_WATER-1]
-					var dispersion =DispersionList[ID_WATER-1]
-					var variation=tilemap.get_cell_alternative_tile(cell)
-					if tilemap.get_cell_source_id(down)==-1 and not ProccesedCells.has(cell) and not ProccesedCells.has(down):
-						tilemap.set_cell(cell,-1)
-						tilemap.set_cell(down, ID,Vector2i(0, 0),variation)
-						ProccesedCells[cell] = true
-						ProccesedCells[down] = true
-					elif DensityList[tilemap.get_cell_source_id(down)-1]<density and not ProccesedCells.has(cell) and not ProccesedCells.has(down):
-						tilemap.set_cell(cell,tilemap.get_cell_source_id(down),Vector2i(0, 0),tilemap.get_cell_alternative_tile(down))
-						tilemap.set_cell(down, ID,Vector2i(0, 0),variation)
-						ProccesedCells[cell] = true
-						ProccesedCells[down] = true
-						
-					else:
-						
-						var d = 1 if randi_range(0, 1) == 1 else -1 #outputs a random number 1 or -1, that later becomes the direction
-						var target=null
-						
-						for x in range(1,dispersion):
-							if tilemap.get_cell_source_id(cell+Vector2i(d*x,0))!=-1 : #check if cell not empty
-								if DensityList[tilemap.get_cell_source_id(cell+Vector2i(d*x,0))-1]>density :
-										target=cell+Vector2i(d*x-d,0)
-										break
-							if x==dispersion-1:
-								target=cell+Vector2i(d*x-d,0)
-						
-									
-						if randi_range(0,1)==1:
-							if target!=null and not ProccesedCells.has(cell) and not ProccesedCells.has(target) and tilemap.get_cell_source_id(target)==-1:
-								tilemap.set_cell(cell,tilemap.get_cell_source_id(target),Vector2i(0,0),tilemap.get_cell_alternative_tile(target))
-								tilemap.set_cell(target, ID,Vector2i(0, 0),variation)
-								ProccesedCells[cell] = true
-								ProccesedCells[target] = true
-						else:
-							if d==1 and tilemap.get_cell_source_id(left)==-1 and not ProccesedCells.has(cell) and not ProccesedCells.has(left):
-								tilemap.set_cell(cell,-1)
-								tilemap.set_cell(left, ID,Vector2i(0, 0),variation)
-								ProccesedCells[cell] = true
-								ProccesedCells[left] = true
-							elif d==-1 and tilemap.get_cell_source_id(right)==-1 and not ProccesedCells.has(cell) and not ProccesedCells.has(right):
-								tilemap.set_cell(cell,-1)
-								tilemap.set_cell(right, ID,Vector2i(0, 0),variation)
-								ProccesedCells[cell] = true
-								ProccesedCells[right] = true
+					
 
 				ID_STEAM:
-					var density=DensityList[ID_STEAM-1]
-					var ID=ID_STEAM
-					var dispersion =DispersionList[ID_STEAM-1]
-					var variation=tilemap.get_cell_alternative_tile(cell)
+					simulate_fluid(cell,ID_STEAM,Vector2i(0,-1),ProccesedCells)
 					SteamUpdates=SteamUpdates+1
-					if tilemap.get_cell_source_id(up)==-1 and not ProccesedCells.has(cell) and not ProccesedCells.has(up):
-						tilemap.set_cell(cell,-1)
-						tilemap.set_cell(up, ID,Vector2i(0, 0),variation)
-						ProccesedCells[cell] = true
-						ProccesedCells[up] = true
-					elif DensityList[tilemap.get_cell_source_id(up)-1]<density and not ProccesedCells.has(cell) and not ProccesedCells.has(up):
-						tilemap.set_cell(cell,tilemap.get_cell_source_id(up),Vector2i(0, 0),tilemap.get_cell_alternative_tile(up))
-						tilemap.set_cell(up, ID,Vector2i(0, 0),variation)
-						ProccesedCells[cell] = true
-						ProccesedCells[up] = true
-				
-					else:
-						
-						var d = 1 if randi_range(0, 1) == 1 else -1 #outputs a random number 1 or -1, that later becomes the direction
-						var target=null
-						
-						for x in range(1,dispersion):
-							if tilemap.get_cell_source_id(cell+Vector2i(d*x,0))!=-1 : #check if cell not empty
-								if DensityList[tilemap.get_cell_source_id(cell+Vector2i(d*x,0))-1]>density :
-										target=cell+Vector2i(d*x-d,0)
-										break
-							if x==dispersion-1:
-								target=cell+Vector2i(d*x-d,0)
-						
-									
-						if randi_range(0,1)==1:
-							if target!=null and not ProccesedCells.has(cell) and not ProccesedCells.has(target) and tilemap.get_cell_source_id(target)==-1:
-								tilemap.set_cell(cell,tilemap.get_cell_source_id(target),Vector2i(0,0),tilemap.get_cell_alternative_tile(target))
-								tilemap.set_cell(target, ID,Vector2i(0, 0),variation)
-								ProccesedCells[cell] = true
-								ProccesedCells[target] = true
-						else:
-							if d==1 and tilemap.get_cell_source_id(left)==-1 and not ProccesedCells.has(cell) and not ProccesedCells.has(left):
-								tilemap.set_cell(cell,-1)
-								tilemap.set_cell(left, ID,Vector2i(0, 0),variation)
-								ProccesedCells[cell] = true
-								ProccesedCells[left] = true
-							elif d==-1 and tilemap.get_cell_source_id(right)==-1 and not ProccesedCells.has(cell) and not ProccesedCells.has(right):
-								tilemap.set_cell(cell,-1)
-								tilemap.set_cell(right, ID,Vector2i(0, 0),variation)
-								ProccesedCells[cell] = true
-								ProccesedCells[right] = true
+					
 				ID_FIRE:
 					var ID = ID_FIRE
 					var variation = tilemap.get_cell_alternative_tile(cell)
@@ -407,9 +396,7 @@ func _on_timer_timeout() -> void:
 					# --- lifespan tracking ---
 					if not fire_lifespan.has(cell):
 						fire_lifespan[cell] = randi_range(FIRE_MIN_LIFE, FIRE_MAX_LIFE)
-
 					fire_lifespan[cell] -= 1 #we make the fire lose life each tick
-
 					# extinguish once lifespan runs out
 					if fire_lifespan[cell] <= 0:
 						tilemap.set_cell(cell, -1)#turns into air
@@ -419,7 +406,6 @@ func _on_timer_timeout() -> void:
 					else:
 						var neighbors = [up, down, left, right, cell+Vector2i(1,-1), cell+Vector2i(-1,-1), cell+Vector2i(1,1), cell+Vector2i(-1,1)]
 						var extinguished = false
-
 						# check for water touching this fire -> put it out, turn to steam
 						if FIRE_EXTINGUISH_ON_WATER:
 							for n in neighbors:
@@ -430,7 +416,6 @@ func _on_timer_timeout() -> void:
 									ProccesedCells[cell] = true
 									extinguished = true
 									break
-
 						if not extinguished:
 							# try to ignite a random flammable neighbor
 							neighbors.shuffle()#rondomizes neighbor order
@@ -443,17 +428,14 @@ func _on_timer_timeout() -> void:
 										temperature_map[n] = 400
 										ProccesedCells[n] = true
 										break # one ignite per tick keeps spread readable, remove to make it more aggressive
-
-							# --- visual flicker: randomize the alt tile every tick so it "dances" ---
+							# visual flicker: randomize the alt tile every tick so it changes color
 							tilemap.set_cell(cell, ID, Vector2i(0,0), randi_range(0,3))
-
-							# --- slight upward drift, like flame licking up, without full steam-style gas physics ---
+							# slightly goes upp
 							if randf() < 0.4 and tilemap.get_cell_source_id(up) == -1 and not ProccesedCells.has(up) and not ProccesedCells.has(cell):
 								tilemap.set_cell(cell, -1)
 								tilemap.set_cell(up, ID, Vector2i(0,0), randi_range(0,3))
 								fire_lifespan[up] = fire_lifespan[cell]
 								fire_lifespan.erase(cell)
 								temperature_map[up] = temperature_map.get(cell, 400)
-
 							ProccesedCells[cell] = true
 								
