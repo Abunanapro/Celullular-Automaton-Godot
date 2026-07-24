@@ -1,14 +1,26 @@
 extends Node
-var brush=4 #id of the material selected
+var brush=5 #id of the material selected
 var brush_size=1
+var brushtemp= 0 #temperature of brush
 const ID_SAND  = 1
 const ID_WATER =2
 const ID_DIRT  = 3
 const ID_STEAM =4
-const DensityList=[1.5,1,99,0.5]
-const CDispersionList=[2,5,0,5]
-var DispersionList=[2,5,0,5]
-const ActiveMaterialList=[1,2,4] #Place here material IDS that you want to "tick"
+const ID_FIRE = 5
+const DensityList=[1.5,1,99,0.5,0.3]
+const CDispersionList=[2,5,0,5,2]
+var DispersionList=[2,5,0,5,2]
+const ActiveMaterialList=[1,2,4,5] #Place here material IDS that you want to "tick"
+#-----
+#FIRE RELATED THINGS
+var fire_lifespan: Dictionary = {} # Vector2i -> int (ticks remaining)
+const FlammableList = [ID_DIRT]    # add any other IDs you want fire to consume	
+const FIRE_MIN_LIFE = 15
+const FIRE_MAX_LIFE = 35
+const FIRE_SPREAD_CHANCE = 0.35    # chance per tick to ignite an eligible neighbor
+const FIRE_EXTINGUISH_ON_WATER = true
+#------
+var temperature_map: Dictionary = {}
 var holding= false
 var holdingDelete=false
 var delete=false
@@ -31,6 +43,7 @@ var SteamUpdates = 0
 @onready var fpslabel =$"../CanvasLayer/UI/MarginContainer3/HBoxContainer/fpss"
 @onready var updateslabel =$"../CanvasLayer/UI/MarginContainer3/HBoxContainer/updates"
 #material update labels
+@onready var tempselectedLabel=$"../CanvasLayer/UI/MarginContainer/VBoxContainer/selected temp"
 @onready var SandCountLabel=$"../CanvasLayer/UI/MarginContainer/VBoxContainer/SandCount"
 @onready var WaterCountLabel=$"../CanvasLayer/UI/MarginContainer/VBoxContainer/WaterCount"
 @onready var SteamCountLabel=$"../CanvasLayer/UI/MarginContainer/VBoxContainer/SteamCount"
@@ -44,6 +57,7 @@ var SteamUpdates = 0
 @onready var waterbutton=$"../CanvasLayer/UI/MarginContainer2/HBoxContainer/water"
 @onready var dirtbutton=$"../CanvasLayer/UI/MarginContainer2/HBoxContainer/dirt"
 @onready var steambutton=$"../CanvasLayer/UI/MarginContainer2/HBoxContainer/steam"
+@onready var firebutton=$"../CanvasLayer/UI/MarginContainer2/HBoxContainer/fire"
 #buttons-system
 @onready var clearbutton=$"../CanvasLayer/UI/MarginContainer3/HBoxContainer/time"
 @onready var settingsbutton=$"../CanvasLayer/UI/MarginContainer4/BoxContainer/TextureButton"
@@ -67,6 +81,7 @@ var pan_speed = 1500.0
 #updates
 @onready var updates=0
 func _ready() -> void:
+	
 	timer.timeout.connect(_on_timer_timeout) #this makes shure the signal is conneted ti timer
 	timer.start()   #starts timer just in case it is not starting for some weird reason...
 		# Fix label widths and prevent them from expanding/shrinking
@@ -131,35 +146,46 @@ func _process(delta: float) -> void:
 		var tilexy = tilemap.local_to_map(tilemap.to_local(mouse_pos))
 		var offset = floor(brush_size / 2.0)
 		tilemap.set_cell(tilexy, brush, Vector2i(0, 0))
-		
+		temperature_map[tilexy] = brushtemp
 		for n in brush_size:
 			for i in brush_size:
 				var pos = tilexy + Vector2i(n - offset, i - offset)
 				tilemap.set_cell(pos, brush,Vector2i(0,0) ,randi_range(0, 3))
-				
+				temperature_map[pos] = brushtemp
 				
 	# WASD pan
 	var dir = Vector2(int(Input.is_key_pressed(KEY_A))-int(Input.is_key_pressed(KEY_D)),int(Input.is_key_pressed(KEY_W))-int(Input.is_key_pressed(KEY_S)))
 	#this moves tilemap with wasd using pan speed :D
 	if dir != Vector2.ZERO:
 		tilemap.position += dir.normalized() * pan_speed * delta
+		
+		
+
 func updatebrush():
 	brush_size=brushsizeslider.value
 	if waterbutton.button_pressed==true:
 		brush=ID_WATER
+		brushtemp=30
 		lastmaterialbrush=ID_WATER
 	elif dirtbutton.button_pressed==true:
 		brush=ID_DIRT
+		brushtemp=30
 		lastmaterialbrush=ID_DIRT
 	elif sandbutton.button_pressed==true:
 		brush=ID_SAND
+		brushtemp=30
 		lastmaterialbrush=ID_SAND
 	elif  steambutton.button_pressed==true:
 		brush=ID_STEAM
+		brushtemp=100
 		lastmaterialbrush=ID_STEAM
+	elif  firebutton.button_pressed==true:
+		brush=ID_FIRE
+		brushtemp=400
+		lastmaterialbrush=ID_FIRE
 	if delete==true:
 		brush=-1
-
+	
 	
 func _input(event:InputEvent) -> void:
 	if get_viewport().gui_get_hovered_control() != null:
@@ -342,7 +368,7 @@ func _on_timer_timeout() -> void:
 						tilemap.set_cell(up, ID,Vector2i(0, 0),variation)
 						ProccesedCells[cell] = true
 						ProccesedCells[up] = true
-						
+				
 					else:
 						
 						var d = 1 if randi_range(0, 1) == 1 else -1 #outputs a random number 1 or -1, that later becomes the direction
@@ -374,5 +400,60 @@ func _on_timer_timeout() -> void:
 								tilemap.set_cell(right, ID,Vector2i(0, 0),variation)
 								ProccesedCells[cell] = true
 								ProccesedCells[right] = true
-		
-		
+				ID_FIRE:
+					var ID = ID_FIRE
+					var variation = tilemap.get_cell_alternative_tile(cell)
+
+					# --- lifespan tracking ---
+					if not fire_lifespan.has(cell):
+						fire_lifespan[cell] = randi_range(FIRE_MIN_LIFE, FIRE_MAX_LIFE)
+
+					fire_lifespan[cell] -= 1 #we make the fire lose life each tick
+
+					# extinguish once lifespan runs out
+					if fire_lifespan[cell] <= 0:
+						tilemap.set_cell(cell, -1)#turns into air
+						temperature_map.erase(cell)#
+						fire_lifespan.erase(cell)
+						ProccesedCells[cell] = true
+					else:
+						var neighbors = [up, down, left, right, cell+Vector2i(1,-1), cell+Vector2i(-1,-1), cell+Vector2i(1,1), cell+Vector2i(-1,1)]
+						var extinguished = false
+
+						# check for water touching this fire -> put it out, turn to steam
+						if FIRE_EXTINGUISH_ON_WATER:
+							for n in neighbors:
+								if tilemap.get_cell_source_id(n) == ID_WATER:
+									tilemap.set_cell(cell, ID_STEAM, Vector2i(0,0), randi_range(0,3))
+									temperature_map[cell] = 100
+									fire_lifespan.erase(cell)
+									ProccesedCells[cell] = true
+									extinguished = true
+									break
+
+						if not extinguished:
+							# try to ignite a random flammable neighbor
+							neighbors.shuffle()#rondomizes neighbor order
+							for n in neighbors:
+								var n_id = tilemap.get_cell_source_id(n)
+								if n_id in FlammableList and not ProccesedCells.has(n) and not fire_lifespan.has(n):
+									if randf() < FIRE_SPREAD_CHANCE:
+										tilemap.set_cell(n, ID_FIRE, Vector2i(0,0), randi_range(0,3))
+										fire_lifespan[n] = randi_range(FIRE_MIN_LIFE, FIRE_MAX_LIFE)
+										temperature_map[n] = 400
+										ProccesedCells[n] = true
+										break # one ignite per tick keeps spread readable, remove to make it more aggressive
+
+							# --- visual flicker: randomize the alt tile every tick so it "dances" ---
+							tilemap.set_cell(cell, ID, Vector2i(0,0), randi_range(0,3))
+
+							# --- slight upward drift, like flame licking up, without full steam-style gas physics ---
+							if randf() < 0.4 and tilemap.get_cell_source_id(up) == -1 and not ProccesedCells.has(up) and not ProccesedCells.has(cell):
+								tilemap.set_cell(cell, -1)
+								tilemap.set_cell(up, ID, Vector2i(0,0), randi_range(0,3))
+								fire_lifespan[up] = fire_lifespan[cell]
+								fire_lifespan.erase(cell)
+								temperature_map[up] = temperature_map.get(cell, 400)
+
+							ProccesedCells[cell] = true
+								

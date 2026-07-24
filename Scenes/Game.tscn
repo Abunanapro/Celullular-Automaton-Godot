@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3 uid="uid://nlqdtlnwamo6"]
+[gd_scene load_steps=18 format=3 uid="uid://nlqdtlnwamo6"]
 
 [ext_resource type="Script" uid="uid://fu4hemtnqy6w" path="res://Scripts/sandsystem.gd" id="1_b2bpf"]
 [ext_resource type="Texture2D" uid="uid://d3c5hdobsa5kq" path="res://Textures/sand.png" id="2_kldst"]
@@ -6,6 +6,7 @@
 [ext_resource type="Texture2D" uid="uid://b641gwgq60gee" path="res://Textures/dirt.png" id="4_7lihs"]
 [ext_resource type="Texture2D" uid="uid://cd1dlxynoa7vl" path="res://Textures/steam.png" id="5_b2bpf"]
 [ext_resource type="Texture2D" uid="uid://bqoldkipkvsqn" path="res://Textures/GUI textures/config.png" id="6_7lihs"]
+[ext_resource type="Texture2D" uid="uid://dwfi3g0iareje" path="res://Textures/fire.png" id="6_71axn"]
 [ext_resource type="Script" uid="uid://c223ka8rqhgdd" path="res://Scenes/mouse_previewer.gd" id="6_bf53h"]
 [ext_resource type="Texture2D" uid="uid://dk5ltye3ej1w0" path="res://icon.png" id="7_fgofq"]
 [ext_resource type="FontFile" uid="uid://bdc17o426iqte" path="res://Textures/Fonts/minecraft-seven/seven.ttf" id="8_2irst"]
@@ -48,12 +49,27 @@ texture = ExtResource("4_7lihs")
 texture = ExtResource("5_b2bpf")
 0:0/next_alternative_id = 4
 0:0/0 = 0
+0:0/0/custom_data_0 = 30.0
 0:0/1 = 1
 0:0/1/modulate = Color(0.9, 0.9, 0.9, 1)
+0:0/1/custom_data_0 = 30.0
 0:0/2 = 2
 0:0/2/modulate = Color(0.95, 0.95, 0.95, 1)
+0:0/2/custom_data_0 = 30.0
 0:0/3 = 3
 0:0/3/modulate = Color(0.97, 0.97, 0.97, 1)
+0:0/3/custom_data_0 = 30.0
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_71axn"]
+texture = ExtResource("6_71axn")
+0:0/next_alternative_id = 4
+0:0/0 = 0
+0:0/1 = 1
+0:0/1/modulate = Color(1.7215022, 3.6408195, 1.797728e-05, 1)
+0:0/2 = 2
+0:0/2/modulate = Color(1.2088029, 0, 0, 1)
+0:0/3 = 3
+0:0/3/modulate = Color(3.9076936, 4.574041, 9.516133e-05, 1)
 
 [sub_resource type="TileSet" id="TileSet_74vwe"]
 physics_layer_0/collision_layer = 1
@@ -63,6 +79,7 @@ sources/1 = SubResource("TileSetAtlasSource_maiyi")
 sources/2 = SubResource("TileSetAtlasSource_gl6un")
 sources/3 = SubResource("TileSetAtlasSource_j5yw3")
 sources/4 = SubResource("TileSetAtlasSource_7lihs")
+sources/5 = SubResource("TileSetAtlasSource_71axn")
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2irst"]
 content_margin_left = 303.0
@@ -135,6 +152,11 @@ layout_mode = 2
 text = "steam"
 icon = ExtResource("5_b2bpf")
 
+[node name="fire" type="Button" parent="CanvasLayer/UI/MarginContainer2/HBoxContainer"]
+layout_mode = 2
+text = "fire"
+icon = ExtResource("6_71axn")
+
 [node name="MarginContainer" type="MarginContainer" parent="CanvasLayer/UI"]
 layout_mode = 1
 anchors_preset = 1
@@ -159,6 +181,10 @@ text = "Water:"
 layout_mode = 2
 text = "Steam:"
 
+[node name="selected temp" type="Label" parent="CanvasLayer/UI/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "pixel temp:"
+
 [node name="MarginContainer3" type="MarginContainer" parent="CanvasLayer/UI"]
 layout_mode = 1
 anchors_preset = 2
@@ -176,6 +202,7 @@ layout_mode = 2
 text = "Clear"
 
 [node name="brush" type="LineEdit" parent="CanvasLayer/UI/MarginContainer3/HBoxContainer"]
+visible = false
 layout_mode = 2
 placeholder_text = "brush size"
 
@@ -184,6 +211,10 @@ visible = false
 layout_mode = 2
 placeholder_text = "canvas size"
 
+[node name="Label" type="Label" parent="CanvasLayer/UI/MarginContainer3/HBoxContainer"]
+layout_mode = 2
+text = "    Timespeed:"
+
 [node name="time" type="LineEdit" parent="CanvasLayer/UI/MarginContainer3/HBoxContainer"]
 layout_mode = 2
 text = "1"
@@ -191,7 +222,7 @@ placeholder_text = "time speed"
 
 [node name="fpss" type="Label" parent="CanvasLayer/UI/MarginContainer3/HBoxContainer"]
 layout_mode = 2
-text = "FPS"
+text = "     FPS"
 
 [node name="updates" type="Label" parent="CanvasLayer/UI/MarginContainer3/HBoxContainer"]
 layout_mode = 2
