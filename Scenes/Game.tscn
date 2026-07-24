@@ -168,6 +168,7 @@ grow_horizontal = 0
 
 [node name="VBoxContainer" type="VBoxContainer" parent="CanvasLayer/UI/MarginContainer"]
 layout_mode = 2
+alignment = 1
 
 [node name="SandCount" type="Label" parent="CanvasLayer/UI/MarginContainer/VBoxContainer"]
 layout_mode = 2
@@ -182,6 +183,10 @@ layout_mode = 2
 text = "Steam:"
 
 [node name="selected temp" type="Label" parent="CanvasLayer/UI/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "pixel temp:"
+
+[node name="selected material" type="Label" parent="CanvasLayer/UI/MarginContainer/VBoxContainer"]
 layout_mode = 2
 text = "pixel temp:"
 

@@ -11,13 +11,14 @@ const DensityList=[1.5,1,99,0.5,0.3]
 const CDispersionList=[2,5,0,5,2]
 var DispersionList=[2,5,0,5,2]
 const ActiveMaterialList=[1,2,4,5] #Place here material IDS that you want to "tick"
+const MaterialNames=["0","Sand","Water","Dirt","Steam","Fire","Wood","Air"]#names  of each material related to id, always keep the 0 and the air names so this works porperly
 #-----
 #FIRE RELATED THINGS
 var fire_lifespan: Dictionary = {} # Vector2i -> int (ticks remaining)
 const FlammableList = [ID_DIRT]    # add any other IDs you want fire to consume	
 const FIRE_MIN_LIFE = 15
 const FIRE_MAX_LIFE = 35
-const FIRE_SPREAD_CHANCE = 0.35    # chance per tick to ignite an eligible neighbor
+const FIRE_SPREAD_CHANCE = 0.05    # chance per tick to ignite an eligible neighbor
 const FIRE_EXTINGUISH_ON_WATER = true
 #------
 var temperature_map: Dictionary = {}
@@ -43,6 +44,7 @@ var SteamUpdates = 0
 @onready var fpslabel =$"../CanvasLayer/UI/MarginContainer3/HBoxContainer/fpss"
 @onready var updateslabel =$"../CanvasLayer/UI/MarginContainer3/HBoxContainer/updates"
 #material update labels
+@onready var selectedmaterialLabel=$"../CanvasLayer/UI/MarginContainer/VBoxContainer/selected material"
 @onready var tempselectedLabel=$"../CanvasLayer/UI/MarginContainer/VBoxContainer/selected temp"
 @onready var SandCountLabel=$"../CanvasLayer/UI/MarginContainer/VBoxContainer/SandCount"
 @onready var WaterCountLabel=$"../CanvasLayer/UI/MarginContainer/VBoxContainer/WaterCount"
@@ -106,8 +108,18 @@ func _process(delta: float) -> void:
 	if holding and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or holdingDelete and not Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
 		holding = false
 		holdingDelete=false
-		
 	
+	
+	if temperature_map.get(tilemap.local_to_map(tilemap.to_local(get_viewport().get_mouse_position()))):
+		tempselectedLabel.text=str(temperature_map.get(tilemap.local_to_map(tilemap.to_local(get_viewport().get_mouse_position()))))+"Cº"
+	else:
+		tempselectedLabel.text="null"
+	
+	if tilemap.get_cell_source_id(tilemap.local_to_map(tilemap.to_local(get_viewport().get_mouse_position()))):
+		selectedmaterialLabel.text=str(MaterialNames[tilemap.get_cell_source_id(tilemap.local_to_map(tilemap.to_local(get_viewport().get_mouse_position())))])
+	else:
+		selectedmaterialLabel.text="null"
+		
 	fpslabel.text=("FPS: "+str(Engine.get_frames_per_second()))
 	SandCountLabel.text=("Sand: "+str(SandUpdates))
 	WaterCountLabel.text=("Water: "+str(WaterUpdates))
@@ -254,12 +266,56 @@ func swap_material(a: Vector2i, b: Vector2i) -> void:
 	temperature_map[a] = b_temp
 	temperature_map[b] = a_temp
 
-# Handles gas/liquid-like movement: water falls, steam rises, and if blocked
-# in that primary direction, they spread sideways looking for a gap.
-#
-# `dir` is the "preferred" direction of travel:
-#   Vector2i(0, 1)  = down (water)
-#   Vector2i(0, -1) = up   (steam)
+
+func simulate_powder(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Dictionary) -> void:
+	var density = DensityList[ID - 1]
+	var variation = tilemap.get_cell_alternative_tile(cell)
+
+	var fwd = cell + dir                          # straight ahead (e.g. directly below)
+	var diag_left = cell + dir + Vector2i(-1, 0)   # ahead-and-left (e.g. down-left)
+	var diag_right = cell + dir + Vector2i(1, 0)   # ahead-and-right (e.g. down-right)
+	var side_left = cell + Vector2i(-1, 0)         # directly beside, same row (used as a "clearance check")
+	var side_right = cell + Vector2i(1, 0)
+	#case 1 just falling without being blocked by anything
+	if tilemap.get_cell_source_id(fwd)==-1 and not ProccesedCells.has(fwd) and not ProccesedCells.has(cell):
+		move_material(cell,fwd,ID,variation)
+		return 
+	#case 2 where we want to move to is occupied by something LESS dense
+	if tilemap.get_cell_source_id(fwd)!=-1 and DensityList[tilemap.get_cell_source_id(fwd) - 1]< density and not ProccesedCells.has(fwd) and not ProccesedCells.has(cell):
+		swap_material(cell,fwd)
+		return 
+	#case 3 where we want to move to is occupuied by a denser or same density material
+	if randi_range(0, 1) == 1:
+		if tilemap.get_cell_source_id(diag_left) == -1 and tilemap.get_cell_source_id(side_left) == -1 and not ProccesedCells.has(diag_left) and not ProccesedCells.has(cell):
+			move_material(cell, diag_left, ID, variation)
+			ProccesedCells[cell] = true
+			ProccesedCells[diag_left] = true
+			return
+			#try to swap lighter materials that are on our diag left
+		if tilemap.get_cell_source_id(side_left) != -1 and tilemap.get_cell_source_id(diag_left) != -1 and DensityList[tilemap.get_cell_source_id(side_left) - 1] != null and DensityList[tilemap.get_cell_source_id(diag_left) - 1] != null:
+			if DensityList[tilemap.get_cell_source_id(diag_left) - 1] < density and DensityList[tilemap.get_cell_source_id(side_left) - 1] < density and not ProccesedCells.has(cell) and not ProccesedCells.has(diag_left):
+				swap_material(cell, diag_left)
+				ProccesedCells[cell] = true
+				ProccesedCells[diag_left] = true
+				return
+
+	else:
+		if tilemap.get_cell_source_id(diag_right) == -1 and tilemap.get_cell_source_id(side_right) == -1 and not ProccesedCells.has(cell) and not ProccesedCells.has(diag_right):
+			move_material(cell, diag_right, ID, variation)
+			ProccesedCells[cell] = true
+			ProccesedCells[diag_right] = true
+			return
+		#try to swap lighter materials that are on our diag right
+		if tilemap.get_cell_source_id(side_right) != -1 and tilemap.get_cell_source_id(diag_right) != -1 and DensityList[tilemap.get_cell_source_id(side_right) - 1] != null and DensityList[tilemap.get_cell_source_id(diag_right) - 1] != null:
+			if DensityList[tilemap.get_cell_source_id(diag_right) - 1] < density and DensityList[tilemap.get_cell_source_id(side_right) - 1] < density and not ProccesedCells.has(cell) and not ProccesedCells.has(diag_right):
+				swap_material(cell, diag_right)
+				ProccesedCells[cell] = true
+				ProccesedCells[diag_right] = true
+
+# Handles liquid movement: water, steam... and if blocked they spread sideways looking for a gap.
+# dir:
+#   Vector2i(0, 1)  = down 
+#   Vector2i(0, -1) = up  
 func simulate_fluid(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Dictionary) -> void:
 	var density = DensityList[ID - 1]
 	var dispersion = DispersionList[ID - 1] # how many tiles sideways this material can "look" for a gap
@@ -301,8 +357,12 @@ func simulate_fluid(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Dict
 			move_material(cell, cell + Vector2i(-d, 0), ID, variation)
 			ProccesedCells[cell] = true
 			ProccesedCells[cell + Vector2i(-d, 0)] = true
-
-
+#this is just the same as liquid but it has a chance of not moving lol
+func simulate_viscous(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Dictionary, move_chance: float) -> void:
+	if randf() > move_chance:
+		ProccesedCells[cell] = true # too viscouse to move try next tick :D
+		return
+	simulate_fluid(cell, ID, dir, ProccesedCells)
 
 
 
@@ -322,7 +382,7 @@ func _on_timer_timeout() -> void:
 	WaterUpdates=0
 	SteamUpdates=0
 	for cell in cells:
-		var cellIndex = tilemap.get_cell_source_id(cell)
+		
 		updates=updates+1
 		var up = cell + Vector2i(0, -1)
 		var down = cell + Vector2i(0, 1)
@@ -332,54 +392,12 @@ func _on_timer_timeout() -> void:
 		var right = cell + Vector2i(1, 0) 
 		
 		if not ProccesedCells.has(cell):
-			match cellIndex:
+			match tilemap.get_cell_source_id(cell):
 				ID_SAND:
-					
-					#Update counter
+					simulate_powder(cell,ID_SAND,Vector2i(0,1),ProccesedCells)
 					SandUpdates=SandUpdates+1
-					#Sand Information
-					var ID=ID_SAND
-					var density=DensityList[ID_SAND-1]
-					var dispersion =DispersionList[ID_SAND-1]
-					var variation=tilemap.get_cell_alternative_tile(cell)
-					if tilemap.get_cell_source_id(down)==-1 and not ProccesedCells.has(down) and not ProccesedCells.has(cell):
-						tilemap.set_cell(cell,-1)
-						tilemap.set_cell(down, ID,Vector2i(0, 0),variation)
-						ProccesedCells[cell] = true
-						ProccesedCells[down] = true
-					else:
-						if DensityList[tilemap.get_cell_source_id(down)-1]!=null:
-							if DensityList[tilemap.get_cell_source_id(down)-1]<density and not ProccesedCells.has(down) and not ProccesedCells.has(cell):
-								tilemap.set_cell(cell,tilemap.get_cell_source_id(down),Vector2i(0, 0),tilemap.get_cell_alternative_tile(down))
-								tilemap.set_cell(down, ID,Vector2i(0, 0),variation)
-								ProccesedCells[cell] = true
-								ProccesedCells[down] = true
-								
-						if randi_range(0,1) ==1:
-							if tilemap.get_cell_source_id(left_bottom)==-1 and tilemap.get_cell_source_id(left)==-1 and not ProccesedCells.has(left_bottom) and not ProccesedCells.has(cell):
-								tilemap.set_cell(cell,-1)
-								tilemap.set_cell(left_bottom, ID,Vector2i(0, 0),variation)
-								ProccesedCells[cell] = true
-								ProccesedCells[left_bottom] = true
-							elif DensityList[tilemap.get_cell_source_id(left)-1]!=null and DensityList[tilemap.get_cell_source_id(left_bottom)-1]!=null:
-								if DensityList[tilemap.get_cell_source_id(left_bottom)-1]<density and DensityList[tilemap.get_cell_source_id(left)-1]<density and not ProccesedCells.has(cell) and not ProccesedCells.has(left_bottom):
-									tilemap.set_cell(cell,tilemap.get_cell_source_id(left_bottom),Vector2i(0, 0),tilemap.get_cell_alternative_tile(left_bottom))
-									tilemap.set_cell(left_bottom, ID,Vector2i(0, 0),variation)
-									ProccesedCells[cell] = true
-									ProccesedCells[left_bottom] = true
-						else:
-							if tilemap.get_cell_source_id(right_bottom)==-1 and tilemap.get_cell_source_id(right)==-1 and not ProccesedCells.has(cell) and not ProccesedCells.has(right_bottom):
-								tilemap.set_cell(cell,-1)
-								tilemap.set_cell(right_bottom, ID,Vector2i(0, 0),variation)
-								ProccesedCells[cell] = true
-								ProccesedCells[right_bottom] = true
-							
-							elif DensityList[tilemap.get_cell_source_id(right)-1]!=null and DensityList[tilemap.get_cell_source_id(right_bottom)-1]!=null:
-								if DensityList[tilemap.get_cell_source_id(right_bottom)-1]<density and DensityList[tilemap.get_cell_source_id(right)-1]<density and not ProccesedCells.has(cell) and not ProccesedCells.has(right_bottom):
-									tilemap.set_cell(cell,tilemap.get_cell_source_id(right_bottom),Vector2i(0, 0),tilemap.get_cell_alternative_tile(right_bottom))
-									tilemap.set_cell(right_bottom, ID,Vector2i(0, 0),variation)
-									ProccesedCells[cell] = true
-									ProccesedCells[right_bottom] = true
+					
+					
 				ID_WATER:
 					simulate_fluid(cell,ID_WATER,Vector2i(0,1),ProccesedCells)
 					WaterUpdates=WaterUpdates+1
