@@ -1,7 +1,11 @@
 extends Node
+
 var brush=5 #id of the material selected
 var brush_size=1
 var brushtemp= 0 #temperature of brush
+
+const CHUNK_SIZE = 16
+
 const ID_SAND  = 1
 const ID_WATER =2
 const ID_DIRT  = 3
@@ -14,14 +18,17 @@ const ActiveMaterialList=[1,2,4,5] #Place here material IDS that you want to "ti
 const MaterialNames=["0","Sand","Water","Dirt","Steam","Fire","Wood","Air"]#names  of each material related to id, always keep the 0 and the air names so this works porperly
 #-----
 #FIRE RELATED THINGS
-var fire_lifespan: Dictionary = {} # Vector2i -> int (ticks remaining)
-const FlammableList = [ID_DIRT]    # add any other IDs you want fire to consume	
+var fire_lifespan: Dictionary = {} #  (ticks remaining)
+const FlammableList = [ID_DIRT]    # what fire consumes
 const FIRE_MIN_LIFE = 15
 const FIRE_MAX_LIFE = 35
 const FIRE_SPREAD_CHANCE = 0.05    # chance per tick to ignite an eligible neighbor
 const FIRE_EXTINGUISH_ON_WATER = true
 #------
+var grid: Dictionary = {}
 var temperature_map: Dictionary = {}
+var active_chunks: Dictionary = {}
+var next_active_chunks: Dictionary = {}
 var holding= false
 var holdingDelete=false
 var delete=false
@@ -82,6 +89,25 @@ var panning = false
 var pan_speed = 1500.0
 #updates
 @onready var updates=0
+
+#EXTREMLEY IMPORTANT FUNCTIONS! to pass this from one thread to multiple threads, bcs I have to change the way the simulations saves the tilemap, because if I multithread I can't acces tilemap :C
+func grid_get_id(cell: Vector2i) -> int:
+	if grid.has(cell):
+		return grid[cell]["id"]
+	return -1
+
+func grid_get_alt(cell: Vector2i) -> int:
+	if grid.has(cell):
+		return grid[cell]["alt"]
+	return 0
+
+func grid_set(cell: Vector2i, id: int, alt: int) -> void:
+	if id == -1:
+		grid.erase(cell)
+	else:
+		grid[cell] = {"id": id, "alt": alt}
+
+
 func _ready() -> void:
 	
 	timer.timeout.connect(_on_timer_timeout) #this makes shure the signal is conneted ti timer
@@ -164,6 +190,7 @@ func _process(delta: float) -> void:
 				var pos = tilexy + Vector2i(n - offset, i - offset)
 				tilemap.set_cell(pos, brush,Vector2i(0,0) ,randi_range(0, 3))
 				temperature_map[pos] = brushtemp
+				wake_cell(pos)
 				
 	# WASD pan
 	var dir = Vector2(int(Input.is_key_pressed(KEY_A))-int(Input.is_key_pressed(KEY_D)),int(Input.is_key_pressed(KEY_W))-int(Input.is_key_pressed(KEY_S)))
@@ -214,13 +241,13 @@ func _input(event:InputEvent) -> void:
 			brush=lastmaterialbrush
 			
 			updatebrush()
-			
+			wake_cell(tilexy)
 			tilemap.set_cell(tilexy,brush,Vector2i(0,0))
 			
 		if event.button_index == MOUSE_BUTTON_RIGHT:
 			holdingDelete = event.pressed
 			tilemap.set_cell(tilexy,brush,Vector2i(-1,-1))
-			
+			wake_cell(tilexy)
 			delete=true
 			updatebrush()
 	
@@ -243,6 +270,20 @@ func _input(event:InputEvent) -> void:
 #----------------------------------------------------------------
 #Usefull FUNCTIONSS!!! i need this because I have to adapt the code to the new temperature map
 
+#Cell_to_chunk function, this calculates on wich chunk this cell is located
+func cell_to_chunk(cell: Vector2i)->Vector2i:
+	var chunk_x = floori(float(cell.x) / CHUNK_SIZE)
+	var chunk_y = floori(float(cell.y) / CHUNK_SIZE)
+	return Vector2i(chunk_x, chunk_y)
+#this function wakes up surrounding cells 
+func wake_cell(cell: Vector2i)->void:
+	for dx in [-1, 0, 1]:      # dx = desplazamiento en X: -1 (izq), 0 (centro), 1 (der)
+		for dy in [-1, 0, 1]:  # dy = desplazamiento en Y: -1 (arriba), 0 (centro), 1 (abajo)
+			var neighborcell = cell + Vector2i(dx, dy)
+			var chunk = cell_to_chunk(neighborcell)
+			# Marcamos ese chunk como "activo para el próximo tick"
+			next_active_chunks[chunk] = true
+
 # Moves a material from `from` to `to`, carrying its temperature with it.
 # 
 func move_material(from: Vector2i, to: Vector2i, id: int, alt_tile: int) -> void:
@@ -250,6 +291,10 @@ func move_material(from: Vector2i, to: Vector2i, id: int, alt_tile: int) -> void
 	temperature_map[to] = temperature_map.get(from, 20)
 	tilemap.set_cell(from, -1)
 	temperature_map.erase(from)
+	
+	wake_cell(from)
+	wake_cell(to)
+	
 
 # Swaps two materials' tiles AND their temperatures.
 # usefull for temperature 
@@ -265,6 +310,9 @@ func swap_material(a: Vector2i, b: Vector2i) -> void:
 	tilemap.set_cell(b, a_id, Vector2i(0, 0), a_alt)
 	temperature_map[a] = b_temp
 	temperature_map[b] = a_temp
+	
+	wake_cell(a)
+	wake_cell(b)
 
 
 func simulate_powder(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Dictionary) -> void:
@@ -279,10 +327,14 @@ func simulate_powder(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Dic
 	#case 1 just falling without being blocked by anything
 	if tilemap.get_cell_source_id(fwd)==-1 and not ProccesedCells.has(fwd) and not ProccesedCells.has(cell):
 		move_material(cell,fwd,ID,variation)
+		ProccesedCells[cell]=true
+		ProccesedCells[fwd]=true
 		return 
 	#case 2 where we want to move to is occupied by something LESS dense
 	if tilemap.get_cell_source_id(fwd)!=-1 and DensityList[tilemap.get_cell_source_id(fwd) - 1]< density and not ProccesedCells.has(fwd) and not ProccesedCells.has(cell):
 		swap_material(cell,fwd)
+		ProccesedCells[cell]=true
+		ProccesedCells[fwd]=true
 		return 
 	#case 3 where we want to move to is occupuied by a denser or same density material
 	if randi_range(0, 1) == 1:
@@ -367,93 +419,124 @@ func simulate_viscous(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Di
 
 
 func _on_timer_timeout() -> void:
-	
+	print("Chunks activos: ", active_chunks.size())
 	updateslabel.text=("Active pixels: "+str(updates))
 	updates=0
 	var ProccesedCells = {} #this just prevents cells from overwiring 
-	var cells:Array
-	#automatically calculates active pixel ammount
-	for x in range(ActiveMaterialList.size()):
-		cells =cells + tilemap.get_used_cells_by_id(ActiveMaterialList[x])
-	#cells = tilemap.get_used_cells_by_id(1)+tilemap.get_used_cells_by_id(2)+tilemap.get_used_cells_by_id(4)
 	
-	
-	SandUpdates=0
-	WaterUpdates=0
-	SteamUpdates=0
-	for cell in cells:
-		
-		updates=updates+1
-		var up = cell + Vector2i(0, -1)
-		var down = cell + Vector2i(0, 1)
-		var right_bottom = cell + Vector2i(1, 1)
-		var left_bottom = cell + Vector2i(-1, 1)
-		var left = cell + Vector2i(-1, 0)   
-		var right = cell + Vector2i(1, 0) 
-		
-		if not ProccesedCells.has(cell):
-			match tilemap.get_cell_source_id(cell):
-				ID_SAND:
-					simulate_powder(cell,ID_SAND,Vector2i(0,1),ProccesedCells)
-					SandUpdates=SandUpdates+1
-					
-					
-				ID_WATER:
-					simulate_fluid(cell,ID_WATER,Vector2i(0,1),ProccesedCells)
-					WaterUpdates=WaterUpdates+1
-					
+	for chunk_coord in active_chunks.keys():
+		#calculates the start of the chunk
+		var initial_x = chunk_coord.x * CHUNK_SIZE
+		var initial_y = chunk_coord.y * CHUNK_SIZE
+		#simulate the chunk
+		for x in range(CHUNK_SIZE):
+			for y in range(CHUNK_SIZE):
+				var cell = Vector2i(initial_x + x, initial_y + y)
+				if ProccesedCells.has(cell):
+					continue #skip already proccesed cells
+				match tilemap.get_cell_source_id(cell):
+					ID_SAND:
+						simulate_powder(cell,ID_SAND,Vector2i(0,1),ProccesedCells)
+						SandUpdates=SandUpdates+1
+						
+						
+					ID_WATER:
+						simulate_fluid(cell,ID_WATER,Vector2i(0,1),ProccesedCells)
+						WaterUpdates=WaterUpdates+1
+						
 
-				ID_STEAM:
-					simulate_fluid(cell,ID_STEAM,Vector2i(0,-1),ProccesedCells)
-					SteamUpdates=SteamUpdates+1
-					
-				ID_FIRE:
-					var ID = ID_FIRE
-					var variation = tilemap.get_cell_alternative_tile(cell)
-
-					# --- lifespan tracking ---
-					if not fire_lifespan.has(cell):
-						fire_lifespan[cell] = randi_range(FIRE_MIN_LIFE, FIRE_MAX_LIFE)
-					fire_lifespan[cell] -= 1 #we make the fire lose life each tick
-					# extinguish once lifespan runs out
-					if fire_lifespan[cell] <= 0:
-						tilemap.set_cell(cell, -1)#turns into air
-						temperature_map.erase(cell)#
-						fire_lifespan.erase(cell)
-						ProccesedCells[cell] = true
-					else:
-						var neighbors = [up, down, left, right, cell+Vector2i(1,-1), cell+Vector2i(-1,-1), cell+Vector2i(1,1), cell+Vector2i(-1,1)]
-						var extinguished = false
-						# check for water touching this fire -> put it out, turn to steam
-						if FIRE_EXTINGUISH_ON_WATER:
-							for n in neighbors:
-								if tilemap.get_cell_source_id(n) == ID_WATER:
-									tilemap.set_cell(cell, ID_STEAM, Vector2i(0,0), randi_range(0,3))
-									temperature_map[cell] = 100
-									fire_lifespan.erase(cell)
-									ProccesedCells[cell] = true
-									extinguished = true
-									break
-						if not extinguished:
-							# try to ignite a random flammable neighbor
-							neighbors.shuffle()#rondomizes neighbor order
-							for n in neighbors:
-								var n_id = tilemap.get_cell_source_id(n)
-								if n_id in FlammableList and not ProccesedCells.has(n) and not fire_lifespan.has(n):
-									if randf() < FIRE_SPREAD_CHANCE:
-										tilemap.set_cell(n, ID_FIRE, Vector2i(0,0), randi_range(0,3))
-										fire_lifespan[n] = randi_range(FIRE_MIN_LIFE, FIRE_MAX_LIFE)
-										temperature_map[n] = 400
-										ProccesedCells[n] = true
-										break # one ignite per tick keeps spread readable, remove to make it more aggressive
-							# visual flicker: randomize the alt tile every tick so it changes color
-							tilemap.set_cell(cell, ID, Vector2i(0,0), randi_range(0,3))
-							# slightly goes upp
-							if randf() < 0.4 and tilemap.get_cell_source_id(up) == -1 and not ProccesedCells.has(up) and not ProccesedCells.has(cell):
-								tilemap.set_cell(cell, -1)
-								tilemap.set_cell(up, ID, Vector2i(0,0), randi_range(0,3))
-								fire_lifespan[up] = fire_lifespan[cell]
-								fire_lifespan.erase(cell)
-								temperature_map[up] = temperature_map.get(cell, 400)
-							ProccesedCells[cell] = true
-								
+					ID_STEAM:
+						simulate_fluid(cell,ID_STEAM,Vector2i(0,-1),ProccesedCells)
+						SteamUpdates=SteamUpdates+1
+	active_chunks = next_active_chunks
+	next_active_chunks = {}
+	#
+	#var cells:Array
+	#
+	##automatically calculates active pixel ammount
+	#for x in range(ActiveMaterialList.size()):
+		#cells =cells + tilemap.get_used_cells_by_id(ActiveMaterialList[x])
+	##cells = tilemap.get_used_cells_by_id(1)+tilemap.get_used_cells_by_id(2)+tilemap.get_used_cells_by_id(4)
+	#
+	#
+	#SandUpdates=0
+	#WaterUpdates=0
+	#SteamUpdates=0
+	#for cell in cells:
+		#
+		#updates=updates+1
+		#var up = cell + Vector2i(0, -1)
+		#var down = cell + Vector2i(0, 1)
+		#var right_bottom = cell + Vector2i(1, 1)
+		#var left_bottom = cell + Vector2i(-1, 1)
+		#var left = cell + Vector2i(-1, 0)   
+		#var right = cell + Vector2i(1, 0) 
+		#
+		#if not ProccesedCells.has(cell):
+			#match tilemap.get_cell_source_id(cell):
+				#ID_SAND:
+					#simulate_powder(cell,ID_SAND,Vector2i(0,1),ProccesedCells)
+					#SandUpdates=SandUpdates+1
+					#
+					#
+				#ID_WATER:
+					#simulate_fluid(cell,ID_WATER,Vector2i(0,1),ProccesedCells)
+					#WaterUpdates=WaterUpdates+1
+					#
+#
+				#ID_STEAM:
+					#simulate_fluid(cell,ID_STEAM,Vector2i(0,-1),ProccesedCells)
+					#SteamUpdates=SteamUpdates+1
+					#
+				#ID_FIRE:
+					#var ID = ID_FIRE
+					#var variation = tilemap.get_cell_alternative_tile(cell)
+#
+					## --- lifespan tracking ---
+					#if not fire_lifespan.has(cell):
+						#fire_lifespan[cell] = randi_range(FIRE_MIN_LIFE, FIRE_MAX_LIFE)
+					#fire_lifespan[cell] -= 1 #we make the fire lose life each tick
+					## extinguish once lifespan runs out
+					#if fire_lifespan[cell] <= 0:
+						#tilemap.set_cell(cell, -1)#turns into air
+						#temperature_map.erase(cell)#
+						#fire_lifespan.erase(cell)
+						#ProccesedCells[cell] = true
+					#else:
+						#var neighbors = [up, down, left, right, cell+Vector2i(1,-1), cell+Vector2i(-1,-1), cell+Vector2i(1,1), cell+Vector2i(-1,1)]
+						#var extinguished = false
+						## check for water touching this fire -> put it out, turn to steam
+						#if FIRE_EXTINGUISH_ON_WATER:
+							#for n in neighbors:
+								#if tilemap.get_cell_source_id(n) == ID_WATER:
+									#tilemap.set_cell(cell, ID_STEAM, Vector2i(0,0), randi_range(0,3))
+									#temperature_map[cell] = 100
+									#fire_lifespan.erase(cell)
+									#ProccesedCells[cell] = true
+									#extinguished = true
+									#break
+						#if not extinguished:
+							#wake_cell(cell)
+							## try to ignite a random flammable neighbor
+							#neighbors.shuffle()#rondomizes neighbor order
+							#for n in neighbors:
+								#var n_id = tilemap.get_cell_source_id(n)
+								#if n_id in FlammableList and not ProccesedCells.has(n) and not fire_lifespan.has(n):
+									#if randf() < FIRE_SPREAD_CHANCE:
+										#tilemap.set_cell(n, ID_FIRE, Vector2i(0,0), randi_range(0,3))
+										#fire_lifespan[n] = randi_range(FIRE_MIN_LIFE, FIRE_MAX_LIFE)
+										#temperature_map[n] = 400
+										#ProccesedCells[n] = true
+										#break # one ignite per tick keeps spread readable, remove to make it more aggressive
+							## visual flicker: randomize the alt tile every tick so it changes color
+							#tilemap.set_cell(cell, ID, Vector2i(0,0), randi_range(0,3))
+							## slightly goes upp
+							#if randf() < 0.4 and tilemap.get_cell_source_id(up) == -1 and not ProccesedCells.has(up) and not ProccesedCells.has(cell):
+								#tilemap.set_cell(cell, -1)
+								#tilemap.set_cell(up, ID, Vector2i(0,0), randi_range(0,3))
+								#fire_lifespan[up] = fire_lifespan[cell]
+								#fire_lifespan.erase(cell)
+								#temperature_map[up] = temperature_map.get(cell, 400)
+								#wake_cell(up)
+							#ProccesedCells[cell] = true
+								#
