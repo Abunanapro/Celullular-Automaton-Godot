@@ -26,7 +26,6 @@ const FIRE_SPREAD_CHANCE = 0.05    # chance per tick to ignite an eligible neigh
 const FIRE_EXTINGUISH_ON_WATER = true
 #------
 var grid: Dictionary = {}
-var dirty_cells: Dictionary = {}
 var temperature_map: Dictionary = {}
 var active_chunks: Dictionary = {}
 var next_active_chunks: Dictionary = {}
@@ -107,18 +106,7 @@ func grid_set(cell: Vector2i, id: int, alt: int) -> void:
 		grid.erase(cell)
 	else:
 		grid[cell] = {"id": id, "alt": alt}
-	dirty_cells[cell] = true
 
-#this will run on our main thread and it will "paint" our tilemap
-func sync_tilemap()->void:
-	for cell in dirty_cells.keys():
-		if grid.has(cell):
-			#cell with smth
-			tilemap.set_cell(cell, grid[cell]["id"], Vector2i(0,0), grid[cell]["alt"])
-		else:
-			# emptyed cell
-			tilemap.set_cell(cell, -1)
-	dirty_cells.clear()
 
 func _ready() -> void:
 	
@@ -143,7 +131,6 @@ var last_time_text=""
 var scale_val=4.0/10.0
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta: float) -> void:
-	
 	if holding and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or holdingDelete and not Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
 		holding = false
 		holdingDelete=false
@@ -152,10 +139,10 @@ func _process(delta: float) -> void:
 	if temperature_map.get(tilemap.local_to_map(tilemap.to_local(get_viewport().get_mouse_position()))):
 		tempselectedLabel.text=str(temperature_map.get(tilemap.local_to_map(tilemap.to_local(get_viewport().get_mouse_position()))))+"Cº"
 	else:
-		tempselectedLabel.text="none"
+		tempselectedLabel.text="null"
 	
-	if grid_get_id(tilemap.local_to_map(tilemap.to_local(get_viewport().get_mouse_position()))):
-		selectedmaterialLabel.text=str(MaterialNames[grid_get_id(tilemap.local_to_map(tilemap.to_local(get_viewport().get_mouse_position())))])
+	if tilemap.get_cell_source_id(tilemap.local_to_map(tilemap.to_local(get_viewport().get_mouse_position()))):
+		selectedmaterialLabel.text=str(MaterialNames[tilemap.get_cell_source_id(tilemap.local_to_map(tilemap.to_local(get_viewport().get_mouse_position())))])
 	else:
 		selectedmaterialLabel.text="null"
 		
@@ -170,8 +157,6 @@ func _process(delta: float) -> void:
 		timer.start()
 	if $"../CanvasLayer/UI/MarginContainer3/HBoxContainer/clear".button_pressed==true:
 		tilemap.clear()
-		grid.clear()
-		temperature_map.clear()
 	#Settings Menu Scripts
 	if settingsbutton.button_pressed and not settings_was_pressed:
 		settingsmenu.visible = !settingsmenu.visible
@@ -198,16 +183,13 @@ func _process(delta: float) -> void:
 		var mouse_pos = get_viewport().get_mouse_position()
 		var tilexy = tilemap.local_to_map(tilemap.to_local(mouse_pos))
 		var offset = floor(brush_size / 2.0)
-		grid_set(tilexy, brush,0)
+		tilemap.set_cell(tilexy, brush, Vector2i(0, 0))
 		temperature_map[tilexy] = brushtemp
 		for n in brush_size:
 			for i in brush_size:
 				var pos = tilexy + Vector2i(n - offset, i - offset)
-				grid_set(pos, brush ,randi_range(0, 3))
-				if brushtemp != 0:
-					temperature_map[pos] = brushtemp
-				else:
-					temperature_map.erase(pos)
+				tilemap.set_cell(pos, brush,Vector2i(0,0) ,randi_range(0, 3))
+				temperature_map[pos] = brushtemp
 				wake_cell(pos)
 				
 	# WASD pan
@@ -216,10 +198,7 @@ func _process(delta: float) -> void:
 	if dir != Vector2.ZERO:
 		tilemap.position += dir.normalized() * pan_speed * delta
 		
-	#------
-	#Extremly important function  
-	sync_tilemap()
-	#------
+		
 
 func updatebrush():
 	brush_size=brushsizeslider.value
@@ -245,7 +224,6 @@ func updatebrush():
 		lastmaterialbrush=ID_FIRE
 	if delete==true:
 		brush=-1
-		brushtemp=0
 	
 	
 func _input(event:InputEvent) -> void:
@@ -264,11 +242,11 @@ func _input(event:InputEvent) -> void:
 			
 			updatebrush()
 			wake_cell(tilexy)
-			grid_set(tilexy,brush,0)
+			tilemap.set_cell(tilexy,brush,Vector2i(0,0))
 			
 		if event.button_index == MOUSE_BUTTON_RIGHT:
 			holdingDelete = event.pressed
-			grid_set(tilexy,brush,0)
+			tilemap.set_cell(tilexy,brush,Vector2i(-1,-1))
 			wake_cell(tilexy)
 			delete=true
 			updatebrush()
@@ -309,10 +287,11 @@ func wake_cell(cell: Vector2i)->void:
 # Moves a material from `from` to `to`, carrying its temperature with it.
 # 
 func move_material(from: Vector2i, to: Vector2i, id: int, alt_tile: int) -> void:
-	grid_set(to, id, alt_tile)
+	tilemap.set_cell(to, id, Vector2i(0, 0), alt_tile)
 	temperature_map[to] = temperature_map.get(from, 20)
-	grid_set(from, -1, 0)
+	tilemap.set_cell(from, -1)
 	temperature_map.erase(from)
+	
 	wake_cell(from)
 	wake_cell(to)
 	
@@ -320,15 +299,15 @@ func move_material(from: Vector2i, to: Vector2i, id: int, alt_tile: int) -> void
 # Swaps two materials' tiles AND their temperatures.
 # usefull for temperature 
 func swap_material(a: Vector2i, b: Vector2i) -> void:
-	var a_id = grid_get_id(a)
-	var a_alt = grid_get_alt(a)
-	var b_id = grid_get_id(b)
-	var b_alt =grid_get_alt(b)
+	var a_id = tilemap.get_cell_source_id(a)
+	var a_alt = tilemap.get_cell_alternative_tile(a)
+	var b_id = tilemap.get_cell_source_id(b)
+	var b_alt = tilemap.get_cell_alternative_tile(b)
 	var a_temp = temperature_map.get(a, 20)
 	var b_temp = temperature_map.get(b, 20)
 
-	grid_set(a, b_id, b_alt)
-	grid_set(b, a_id, a_alt)
+	tilemap.set_cell(a, b_id, Vector2i(0, 0), b_alt)
+	tilemap.set_cell(b, a_id, Vector2i(0, 0), a_alt)
 	temperature_map[a] = b_temp
 	temperature_map[b] = a_temp
 	
@@ -338,49 +317,49 @@ func swap_material(a: Vector2i, b: Vector2i) -> void:
 
 func simulate_powder(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Dictionary) -> void:
 	var density = DensityList[ID - 1]
-	var variation = grid_get_alt(cell)
+	var variation = tilemap.get_cell_alternative_tile(cell)
 
-	var fwd = cell + dir                          # straight ahead 
-	var diag_left = cell + dir + Vector2i(-1, 0)   # ahead-and-left 
-	var diag_right = cell + dir + Vector2i(1, 0)   # ahead-and-right 
-	var side_left = cell + Vector2i(-1, 0)         # side
+	var fwd = cell + dir                          # straight ahead (e.g. directly below)
+	var diag_left = cell + dir + Vector2i(-1, 0)   # ahead-and-left (e.g. down-left)
+	var diag_right = cell + dir + Vector2i(1, 0)   # ahead-and-right (e.g. down-right)
+	var side_left = cell + Vector2i(-1, 0)         # directly beside, same row (used as a "clearance check")
 	var side_right = cell + Vector2i(1, 0)
 	#case 1 just falling without being blocked by anything
-	if grid_get_id(fwd)==-1 and not ProccesedCells.has(fwd) and not ProccesedCells.has(cell):
+	if tilemap.get_cell_source_id(fwd)==-1 and not ProccesedCells.has(fwd) and not ProccesedCells.has(cell):
 		move_material(cell,fwd,ID,variation)
 		ProccesedCells[cell]=true
 		ProccesedCells[fwd]=true
 		return 
 	#case 2 where we want to move to is occupied by something LESS dense
-	if grid_get_id(fwd)!=-1 and DensityList[grid_get_id(fwd) - 1]< density and not ProccesedCells.has(fwd) and not ProccesedCells.has(cell):
+	if tilemap.get_cell_source_id(fwd)!=-1 and DensityList[tilemap.get_cell_source_id(fwd) - 1]< density and not ProccesedCells.has(fwd) and not ProccesedCells.has(cell):
 		swap_material(cell,fwd)
 		ProccesedCells[cell]=true
 		ProccesedCells[fwd]=true
 		return 
 	#case 3 where we want to move to is occupuied by a denser or same density material
 	if randi_range(0, 1) == 1:
-		if grid_get_id(diag_left) == -1 and grid_get_id(side_left) == -1 and not ProccesedCells.has(diag_left) and not ProccesedCells.has(cell):
+		if tilemap.get_cell_source_id(diag_left) == -1 and tilemap.get_cell_source_id(side_left) == -1 and not ProccesedCells.has(diag_left) and not ProccesedCells.has(cell):
 			move_material(cell, diag_left, ID, variation)
 			ProccesedCells[cell] = true
 			ProccesedCells[diag_left] = true
 			return
 			#try to swap lighter materials that are on our diag left
-		if grid_get_id(side_left) != -1 and grid_get_id(diag_left) != -1 and DensityList[grid_get_id(side_left) - 1] != null and DensityList[grid_get_id(diag_left) - 1] != null:
-			if DensityList[grid_get_id(diag_left) - 1] < density and DensityList[grid_get_id(side_left) - 1] < density and not ProccesedCells.has(cell) and not ProccesedCells.has(diag_left):
+		if tilemap.get_cell_source_id(side_left) != -1 and tilemap.get_cell_source_id(diag_left) != -1 and DensityList[tilemap.get_cell_source_id(side_left) - 1] != null and DensityList[tilemap.get_cell_source_id(diag_left) - 1] != null:
+			if DensityList[tilemap.get_cell_source_id(diag_left) - 1] < density and DensityList[tilemap.get_cell_source_id(side_left) - 1] < density and not ProccesedCells.has(cell) and not ProccesedCells.has(diag_left):
 				swap_material(cell, diag_left)
 				ProccesedCells[cell] = true
 				ProccesedCells[diag_left] = true
 				return
 
 	else:
-		if grid_get_id(diag_right) == -1 and grid_get_id(side_right) == -1 and not ProccesedCells.has(cell) and not ProccesedCells.has(diag_right):
+		if tilemap.get_cell_source_id(diag_right) == -1 and tilemap.get_cell_source_id(side_right) == -1 and not ProccesedCells.has(cell) and not ProccesedCells.has(diag_right):
 			move_material(cell, diag_right, ID, variation)
 			ProccesedCells[cell] = true
 			ProccesedCells[diag_right] = true
 			return
 		#try to swap lighter materials that are on our diag right
-		if grid_get_id(side_right) != -1 and grid_get_id(diag_right) != -1 and DensityList[grid_get_id(side_right) - 1] != null and DensityList[grid_get_id(diag_right) - 1] != null:
-			if DensityList[grid_get_id(diag_right) - 1] < density and DensityList[grid_get_id(side_right) - 1] < density and not ProccesedCells.has(cell) and not ProccesedCells.has(diag_right):
+		if tilemap.get_cell_source_id(side_right) != -1 and tilemap.get_cell_source_id(diag_right) != -1 and DensityList[tilemap.get_cell_source_id(side_right) - 1] != null and DensityList[tilemap.get_cell_source_id(diag_right) - 1] != null:
+			if DensityList[tilemap.get_cell_source_id(diag_right) - 1] < density and DensityList[tilemap.get_cell_source_id(side_right) - 1] < density and not ProccesedCells.has(cell) and not ProccesedCells.has(diag_right):
 				swap_material(cell, diag_right)
 				ProccesedCells[cell] = true
 				ProccesedCells[diag_right] = true
@@ -392,17 +371,17 @@ func simulate_powder(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Dic
 func simulate_fluid(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Dictionary) -> void:
 	var density = DensityList[ID - 1]
 	var dispersion = DispersionList[ID - 1] # how many tiles sideways this material can "look" for a gap
-	var variation = grid_get_alt(cell)
+	var variation = tilemap.get_cell_alternative_tile(cell)
 	var fwd = cell + dir # the cell directly in the preferred direction (down for water, up for steam)
 	
 	#Case 1 just moving when nothing is blocking
-	if grid_get_id(fwd)==-1 and not ProccesedCells.has(cell) and not ProccesedCells.has(fwd):
+	if tilemap.get_cell_source_id(fwd)==-1 and not ProccesedCells.has(cell) and not ProccesedCells.has(fwd):
 		move_material(cell,fwd,ID,variation)
 		ProccesedCells[cell] = true
 		ProccesedCells[fwd] = true
 		return
 	#Case 2 the cell where we want to move to is occupied by something less dense than our material
-	if grid_get_id(fwd) != -1 and DensityList[grid_get_id(fwd) - 1] < density and not ProccesedCells.has(cell) and not ProccesedCells.has(fwd):
+	if tilemap.get_cell_source_id(fwd) != -1 and DensityList[tilemap.get_cell_source_id(fwd) - 1] < density and not ProccesedCells.has(cell) and not ProccesedCells.has(fwd):
 		swap_material(cell, fwd)
 		ProccesedCells[cell] = true
 		ProccesedCells[fwd] = true
@@ -411,8 +390,8 @@ func simulate_fluid(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Dict
 	var d = 1 if randi_range(0, 1) == 1 else -1 #outputs a random number 1 or -1, that later becomes the direction
 	var target=null
 	for x in range(1,dispersion):
-		if grid_get_id(cell+Vector2i(d*x,0))!=-1 : #check if cell not empty
-			if DensityList[grid_get_id(cell+Vector2i(d*x,0))-1]>density :
+		if tilemap.get_cell_source_id(cell+Vector2i(d*x,0))!=-1 : #check if cell not empty
+			if DensityList[tilemap.get_cell_source_id(cell+Vector2i(d*x,0))-1]>density :
 					target=cell+Vector2i(d*x-d,0)
 					break
 		if x==dispersion-1:
@@ -420,13 +399,13 @@ func simulate_fluid(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Dict
 	#case 3.1 we found our target and we move to it
 					
 	if randi_range(0,1)==1:
-		if target!=null and not ProccesedCells.has(cell) and not ProccesedCells.has(target) and grid_get_id(target)==-1:
+		if target!=null and not ProccesedCells.has(cell) and not ProccesedCells.has(target) and tilemap.get_cell_source_id(target)==-1:
 			move_material(cell, target, ID, variation)
 			ProccesedCells[cell] = true
 			ProccesedCells[target] = true
 	#case 3.2 we found no target so we move sideways
 	else:
-		if grid_get_id(cell + Vector2i(-d, 0)) == -1 and not ProccesedCells.has(cell) and not ProccesedCells.has(cell + Vector2i(-d, 0)):
+		if tilemap.get_cell_source_id(cell + Vector2i(-d, 0)) == -1 and not ProccesedCells.has(cell) and not ProccesedCells.has(cell + Vector2i(-d, 0)):
 			move_material(cell, cell + Vector2i(-d, 0), ID, variation)
 			ProccesedCells[cell] = true
 			ProccesedCells[cell + Vector2i(-d, 0)] = true
@@ -440,7 +419,7 @@ func simulate_viscous(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Di
 
 
 func _on_timer_timeout() -> void:
-	$"../CanvasLayer/UI/MarginContainer3/HBoxContainer/activechunks".text=str("Chunks activos: ", active_chunks.size())
+	print("Chunks activos: ", active_chunks.size())
 	updateslabel.text=("Active pixels: "+str(updates))
 	updates=0
 	var ProccesedCells = {} #this just prevents cells from overwiring 
@@ -455,7 +434,7 @@ func _on_timer_timeout() -> void:
 				var cell = Vector2i(initial_x + x, initial_y + y)
 				if ProccesedCells.has(cell):
 					continue #skip already proccesed cells
-				match grid_get_id(cell):
+				match tilemap.get_cell_source_id(cell):
 					ID_SAND:
 						simulate_powder(cell,ID_SAND,Vector2i(0,1),ProccesedCells)
 						SandUpdates=SandUpdates+1
@@ -471,7 +450,6 @@ func _on_timer_timeout() -> void:
 						SteamUpdates=SteamUpdates+1
 	active_chunks = next_active_chunks
 	next_active_chunks = {}
-	sync_tilemap()
 	#
 	#var cells:Array
 	#
