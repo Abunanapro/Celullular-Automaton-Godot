@@ -237,6 +237,10 @@ text = "     FPS"
 layout_mode = 2
 text = "Pixels:"
 
+[node name="activechunks" type="Label" parent="CanvasLayer/UI/MarginContainer3/HBoxContainer"]
+layout_mode = 2
+text = "Chunks:"
+
 [node name="MarginContainer4" type="MarginContainer" parent="CanvasLayer/UI"]
 layout_mode = 1
 anchors_preset = 3
