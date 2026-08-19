@@ -262,7 +262,7 @@ func _ready() -> void:
 	
 
 var last_time_text=""
-
+var lastcellmouse:Vector2i
 var scale_val=4.0/10.0
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta: float) -> void:
@@ -324,14 +324,17 @@ func _process(delta: float) -> void:
 		var mouse_pos = get_viewport().get_mouse_position()
 		var tilexy = mouse_to_cell()
 		var offset = floor(brush_size / 2.0)
+		for c in get_line_cells(lastcellmouse, tilexy):
+			for n in brush_size:
+				for i in brush_size:
+					var pos = c + Vector2i(n - offset, i - offset)
+					grid_set(pos, brush, randi_range(0, 3))
+					temperature_map[pos] = brushtemp
+					wake_cell(pos)
 		grid_set(tilexy, brush, 1)
+		
 		temperature_map[tilexy] = brushtemp
-		for n in brush_size:
-			for i in brush_size:
-				var pos = tilexy + Vector2i(n - offset, i - offset)
-				grid_set(pos, brush ,randi_range(0, 3))
-				temperature_map[pos] = brushtemp
-				wake_cell(pos)
+		
 				
 	# WASD pan
 	var dir = Vector2(int(Input.is_key_pressed(KEY_A))-int(Input.is_key_pressed(KEY_D)),int(Input.is_key_pressed(KEY_W))-int(Input.is_key_pressed(KEY_S)))
@@ -340,6 +343,7 @@ func _process(delta: float) -> void:
 		tilemap.position += dir.normalized() * pan_speed * delta
 		
 	sync_tilemap()
+	lastcellmouse=mouse_to_cell()
 
 func updatebrush():
 	brush_size=brushsizeslider.value
