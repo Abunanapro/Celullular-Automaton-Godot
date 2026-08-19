@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3 uid="uid://nlqdtlnwamo6"]
+[gd_scene load_steps=19 format=3 uid="uid://nlqdtlnwamo6"]
 
 [ext_resource type="Script" uid="uid://fu4hemtnqy6w" path="res://Scripts/sandsystem.gd" id="1_b2bpf"]
 [ext_resource type="Texture2D" uid="uid://d3c5hdobsa5kq" path="res://Textures/sand.png" id="2_kldst"]
@@ -8,6 +8,7 @@
 [ext_resource type="Texture2D" uid="uid://bqoldkipkvsqn" path="res://Textures/GUI textures/config.png" id="6_7lihs"]
 [ext_resource type="Texture2D" uid="uid://dwfi3g0iareje" path="res://Textures/fire.png" id="6_71axn"]
 [ext_resource type="Script" uid="uid://c223ka8rqhgdd" path="res://Scenes/mouse_previewer.gd" id="6_bf53h"]
+[ext_resource type="Script" uid="uid://duyghppejvkwr" path="res://Scenes/autobutton_maker.gd" id="7_dahhg"]
 [ext_resource type="Texture2D" uid="uid://dk5ltye3ej1w0" path="res://icon.png" id="7_fgofq"]
 [ext_resource type="FontFile" uid="uid://bdc17o426iqte" path="res://Textures/Fonts/minecraft-seven/seven.ttf" id="8_2irst"]
 
@@ -111,6 +112,8 @@ tile_set = SubResource("TileSet_74vwe")
 wait_time = 0.1
 autostart = true
 
+[node name="WorldContainer" type="Node2D" parent="Game2"]
+
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 
 [node name="UI" type="Control" parent="CanvasLayer"]
@@ -135,6 +138,7 @@ offset_bottom = 40.0
 
 [node name="HBoxContainer" type="HBoxContainer" parent="CanvasLayer/UI/MarginContainer2"]
 layout_mode = 2
+script = ExtResource("7_dahhg")
 
 [node name="sand" type="Button" parent="CanvasLayer/UI/MarginContainer2/HBoxContainer"]
 layout_mode = 2
