@@ -141,26 +141,31 @@ layout_mode = 2
 script = ExtResource("7_dahhg")
 
 [node name="sand" type="Button" parent="CanvasLayer/UI/MarginContainer2/HBoxContainer"]
+visible = false
 layout_mode = 2
 text = "sand"
 icon = ExtResource("2_kldst")
 
 [node name="water" type="Button" parent="CanvasLayer/UI/MarginContainer2/HBoxContainer"]
+visible = false
 layout_mode = 2
 text = "water"
 icon = ExtResource("3_b2bpf")
 
 [node name="dirt" type="Button" parent="CanvasLayer/UI/MarginContainer2/HBoxContainer"]
+visible = false
 layout_mode = 2
 text = "dirt"
 icon = ExtResource("4_7lihs")
 
 [node name="steam" type="Button" parent="CanvasLayer/UI/MarginContainer2/HBoxContainer"]
+visible = false
 layout_mode = 2
 text = "steam"
 icon = ExtResource("5_b2bpf")
 
 [node name="fire" type="Button" parent="CanvasLayer/UI/MarginContainer2/HBoxContainer"]
+visible = false
 layout_mode = 2
 text = "fire"
 icon = ExtResource("6_71axn")

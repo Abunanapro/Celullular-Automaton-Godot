@@ -40,7 +40,7 @@ const ID_GLASS=11
 const ID_WOODDUST=12
 const ID_BUTANE=13
 
-const DensityList=[1.5,1,99,0.5,0.3,99,1.2,4,1,0.9,99,0.95,0.6]
+const DensityList=[1.5,1,99,0.5,0.3,99,1.2,4,1,0.9,99,1.2,0.6]
 const CDispersionList=[2,5,0,5,2,0,6,2,5,0,0,2,7]
 var DispersionList=[2,5,0,5,2]
 const ActiveMaterialList=[1,2,4,5,7,8,9,12,13] #Place here material IDS that you want to "tick"
@@ -87,11 +87,7 @@ var SteamUpdates = 0
 @onready var BrushSizeLabel=$"../setingsmenu/Control/MarginContainer/MarginContainer/VBoxContainer/Brush Size/Brushsizelabel"
 #buttons
 #buttons-material
-@onready var sandbutton=$"../CanvasLayer/UI/MarginContainer2/HBoxContainer/sand"
-@onready var waterbutton=$"../CanvasLayer/UI/MarginContainer2/HBoxContainer/water"
-@onready var dirtbutton=$"../CanvasLayer/UI/MarginContainer2/HBoxContainer/dirt"
-@onready var steambutton=$"../CanvasLayer/UI/MarginContainer2/HBoxContainer/steam"
-@onready var firebutton=$"../CanvasLayer/UI/MarginContainer2/HBoxContainer/fire"
+#no longer used^
 #buttons-system
 @onready var clearbutton=$"../CanvasLayer/UI/MarginContainer3/HBoxContainer/time"
 @onready var settingsbutton=$"../CanvasLayer/UI/MarginContainer4/BoxContainer/TextureButton"
@@ -347,26 +343,7 @@ func _process(delta: float) -> void:
 
 func updatebrush():
 	brush_size=brushsizeslider.value
-	if waterbutton.button_pressed==true:
-		brush=ID_WATER
-		brushtemp=30
-		lastmaterialbrush=ID_WATER
-	elif dirtbutton.button_pressed==true:
-		brush=ID_DIRT
-		brushtemp=30
-		lastmaterialbrush=ID_DIRT
-	elif sandbutton.button_pressed==true:
-		brush=ID_SAND
-		brushtemp=30
-		lastmaterialbrush=ID_SAND
-	elif  steambutton.button_pressed==true:
-		brush=ID_STEAM
-		brushtemp=100
-		lastmaterialbrush=ID_STEAM
-	elif  firebutton.button_pressed==true:
-		brush=ID_FIRE
-		brushtemp=400
-		lastmaterialbrush=ID_FIRE
+	#moved to autobuttonmaker script 
 	if delete==true:
 		brush=-1
 	
