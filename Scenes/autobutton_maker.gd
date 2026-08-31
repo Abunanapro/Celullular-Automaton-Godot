@@ -7,21 +7,6 @@ extends HBoxContainer
 
 var group := ButtonGroup.new()
 
-const MaterialTemps = { #material temperatures
-	1: 30,
-	 2: 30,
-	 3: 30,
-	 4: 100,
-	 5: 400,
-	 6: 30,
-	 7: 30,
-	8: 800,
-	 9: 30,
-	 10: -10,
-	 11: 30, 
-	12: 30,
-	 13: 30,
-}
 
 func _ready() -> void:
 	for id in sandsystem.MaterialColors.keys():
@@ -62,5 +47,6 @@ func _create_button(id: int) -> void:
 func _on_material_pressed(id: int) -> void:
 	sandsystem.brush = id
 	sandsystem.lastmaterialbrush = id
-	sandsystem.brushtemp = MaterialTemps.get(id, 30)
+	sandsystem.brushtemp = sandsystem.MaterialTemps.get(id)
+	
 	sandsystem.delete = false

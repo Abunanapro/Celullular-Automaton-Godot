@@ -7,7 +7,7 @@ var brushtemp= 0 #temperature of brush
 
 const CHUNK_SIZE = 16
 const CELL_PIXEL_SIZE = 8
-
+var AMBIENT_TEMP = 20 #its a var bcs I want to make it so you can change it in config :P
 #COLORS:
 const MaterialColors = {
 	-1: Color(0, 0, 0, 0),           # air
@@ -40,18 +40,63 @@ const ID_GLASS=11
 const ID_WOODDUST=12
 const ID_BUTANE=13
 
-const DensityList=[1.5,1,99,0.5,0.3,99,1.2,4,1,0.9,99,1.2,0.6]
+var MaterialTemps = { #material temperatures
+	0:AMBIENT_TEMP,
+	1: 20,
+	 2: 20,
+	 3: 20,
+	 4: 100,
+	 5: 400,
+	 6: 20,
+	 7: 20,
+	8: 800,
+	 9: 20,
+	 10: -10,
+	 11: 20, 
+	12: 20,
+	 13: 20,
+}
+const HEAT_CONDUCTION = 0.15 # how fast heat spreads per tick, 0-1
+
+# id: {"above": [threshold_temp, new_id], "below": [threshold_temp, new_id]}
+const MaterialTransitions = {
+	ID_WATER:  {"below": [0, ID_ICE],    "above": [100, ID_STEAM]},
+	ID_ICE:    {"above": [0, ID_WATER]},
+	ID_STEAM:  {"below": [95, ID_WATER]},
+	ID_WOOD:   {"above": [250, ID_FIRE]},
+	ID_OIL:    {"above": [300, ID_FIRE]},
+	ID_BUTANE: {"above": [200, ID_FIRE]},
+	ID_MAGMA:  {"below": [700, ID_DIRT]},
+}
+const DensityList=[1.5,1,99,0.5,0.3,99,1.2,4,1,99,99,1.2,0.6]
 const CDispersionList=[2,5,0,5,2,0,6,2,5,0,0,2,7]
 var DispersionList=[2,5,0,5,2]
 const ActiveMaterialList=[1,2,4,5,7,8,9,12,13] #Place here material IDS that you want to "tick"
 const MaterialNames=["0","Sand","Water","Dirt","Steam","Fire","Wood","Oil","Magma","Acid","Ice","Glass","Wood Dust","Butane","Air"]#names  of each material related to id, always keep the 0 and the air names so this works porperly
+#type (0=no variation, 1=normal variation, 2=lower variation, 3=hue shift warm, 4=hue shift cool, 5=desaturate, 6=saturate, 7=alpha flicker)
+const VaryTypeList=[
+	0,#air
+	1,#sand
+	1,#water
+	1,#dirt
+	7,#steam
+	3,#fire
+	1,#wood
+	2,#oil
+	7,#magma 
+	2,#acid
+	4,#ice
+	2,#glass
+	1,#wooddust
+	7#butane
+]
 #-----
 
 var FireHealth: Dictionary={}
 #------
 var dirty_cells: Dictionary = {}
 var chunks: Dictionary = {}
-var temperature_map: Dictionary = {}
+
 var active_chunks: Dictionary = {}
 var next_active_chunks: Dictionary = {}
 var holding= false
@@ -110,7 +155,7 @@ var panning = false
 var pan_speed = 1500.0
 #updates
 @onready var updates=0
-#https://es.wikipedia.org/wiki/Algoritmo_de_Bresenham A
+#https://es.wikipedia.org/wiki/Algoritmo_de_Bresenham Algoritme de bresenham adaptat a godot
 func get_line_cells(from: Vector2i, to: Vector2i) -> Array:
 	var cells = []
 	var dx = abs(to.x - from.x)
@@ -193,14 +238,14 @@ class ChunkData:
 	var texture: ImageTexture    
 	var sprite: Sprite2D          
 
-	func _init():
+	func _init(ambient_temp: int):
 		var size = CHUNK_SIZE * CHUNK_SIZE
 		ids.resize(size)
 		alts.resize(size)
 		temps.resize(size)
 		ids.fill(-1)
 		alts.fill(0)
-		temps.fill(20)
+		temps.fill(ambient_temp)
 
 
 		image = Image.create(CHUNK_SIZE, CHUNK_SIZE, false, Image.FORMAT_RGBA8)
@@ -209,13 +254,13 @@ class ChunkData:
 		sprite = null
 func mouse_to_cell() -> Vector2i:
 	var mouse_pos = get_viewport().get_mouse_position()
-	var local_pos = world_container.to_local(mouse_pos)
+	var local_pos= world_container.to_local(mouse_pos)
 	return Vector2i(floori(local_pos.x / CELL_PIXEL_SIZE), floori(local_pos.y / CELL_PIXEL_SIZE))
 #updates the images shown it used to use tilemap thats why it has this name ...
-func sync_tilemap() -> void:
+func sync_tilemap() ->void:
 	if dirty_cells.is_empty():
 		return
-	var touched_chunks: Dictionary = {}
+	var touched_chunks: Dictionary= {}
 	for cell in dirty_cells.keys():
 		var chunk_coord = cell_to_chunk(cell)
 		var chunk = get_chunk(chunk_coord, true)
@@ -224,9 +269,9 @@ func sync_tilemap() -> void:
 		var material_id = chunk.ids[idx]
 		var base_color = MaterialColors.get(material_id, Color(1, 0, 1, 1))
 		var alt = chunk.alts[idx]
-		var color = vary_color(base_color, alt)
-		var lx = ((cell.x % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE
-		var ly = ((cell.y % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE
+		var color = vary_color(base_color, alt,material_id,VaryTypeList)
+		var lx =((cell.x % CHUNK_SIZE)+CHUNK_SIZE)%CHUNK_SIZE
+		var ly=((cell.y % CHUNK_SIZE)+CHUNK_SIZE)%CHUNK_SIZE
 		chunk.image.set_pixel(lx, ly, color)
 		touched_chunks[chunk_coord] = true
 	for chunk_coord in touched_chunks.keys():
@@ -234,12 +279,37 @@ func sync_tilemap() -> void:
 		chunk.texture.update(chunk.image)
 	dirty_cells.clear()
 	#vary the color of the materials
-func vary_color(base: Color, alt: int) -> Color:
-	if base.a == 0.0: #if transparent skip the color variation
-		return base  
-	 
-	var factor = [1.0, 0.9, 1.1, 0.95][alt % [1.0, 0.9, 1.1, 0.95].size()] 
-	return Color(clamp(base.r * factor, 0.0, 1.0),clamp(base.g * factor, 0.0, 1.0),clamp(base.b * factor, 0.0, 1.0),base.a)
+func vary_color(base: Color, alt: int, id:int,VaryTypeList:Array) -> Color:
+	if base.a == 0.0:
+		return base
+
+	var factor
+	match VaryTypeList[id]:
+		0: # no variation
+			return base
+		1: # normal brightness
+			factor = [1.0, 0.9, 1.1, 0.95][alt % 4]
+			return Color(clamp(base.r*factor,0,1), clamp(base.g*factor,0,1), clamp(base.b*factor,0,1), base.a)
+		2: # low brightness
+			factor = [1.0, 0.95, 1.05, 0.98][alt % 4]
+			return Color(clamp(base.r*factor,0,1), clamp(base.g*factor,0,1), clamp(base.b*factor,0,1), base.a)
+		3: # hue shift warm (fire-like)
+			factor = [0.0, 0.01, 0.03, 0.02][alt % 4]
+			return Color.from_hsv(wrapf(base.h+factor,0,1), base.s, clamp(base.v*1.1,0,1), base.a)
+		4: # hue shift cool (water/ice-like)
+			factor = [0.0, -0.01, -0.03, -0.02][alt % 4]
+			return Color.from_hsv(wrapf(base.h+factor,0,1), base.s, base.v, base.a)
+		5: # desaturate (sand/dirt-like)
+			factor = [1.0, 0.9, 0.85, 0.95][alt % 4]
+			return Color.from_hsv(base.h, clamp(base.s*factor,0,1), base.v, base.a)
+		6: # saturate (acid-like)
+			factor = [1.0, 1.1, 1.3, 1.2][alt % 4]
+			return Color.from_hsv(base.h, clamp(base.s*factor,0,1), base.v, base.a)
+		7: # alpha flicker (steam/butane-like)
+			factor = [1.0, 0.7, 0.9, 0.8][alt % 4]
+			return Color(base.r, base.g, base.b, clamp(base.a*factor,0,1))
+
+	return base
 func _ready() -> void:
 	
 	
@@ -274,7 +344,7 @@ func _process(delta: float) -> void:
 	if grid_get_temp(mouse_to_cell())!=-1:
 		tempselectedLabel.text=str(grid_get_temp(mouse_to_cell()))+"Cº"
 	else:
-		tempselectedLabel.text=str(20)+"Cº"
+		tempselectedLabel.text=str(AMBIENT_TEMP)+"Cº"
 	
 	if grid_get_id(mouse_to_cell()):
 		selectedmaterialLabel.text=str(MaterialNames[grid_get_id(mouse_to_cell())])
@@ -329,18 +399,19 @@ func _process(delta: float) -> void:
 				for i in brush_size:
 					var pos = c + Vector2i(n - offset, i - offset)
 					grid_set(pos, brush, randi_range(0, 3))
-					temperature_map[pos] = brushtemp
+					temp_set(pos,brushtemp)
+					
 					wake_cell(pos)
 		grid_set(tilexy, brush, 1)
 		
-		temperature_map[tilexy] = brushtemp
+		temp_set(tilexy,brushtemp)
 		
 				
 	# WASD pan
 	var dir = Vector2(int(Input.is_key_pressed(KEY_A))-int(Input.is_key_pressed(KEY_D)),int(Input.is_key_pressed(KEY_W))-int(Input.is_key_pressed(KEY_S)))
 	#this moves tilemap with wasd using pan speed :D
 	if dir != Vector2.ZERO:
-		tilemap.position += dir.normalized() * pan_speed * delta
+		world_container.position += dir.normalized() * pan_speed * delta
 		
 	sync_tilemap()
 	lastcellmouse=mouse_to_cell()
@@ -416,7 +487,7 @@ func get_chunk(chunk_coord: Vector2i, create_if_missing: bool):
 		
 	if not create_if_missing:
 		return null
-	var chunknew=ChunkData.new()
+	var chunknew=ChunkData.new(AMBIENT_TEMP)
 	chunks[chunk_coord]= chunknew
 	return chunknew
 #this function wakes up surrounding cells 
@@ -432,9 +503,10 @@ func wake_cell(cell: Vector2i)->void:
 # 
 func move_material(from: Vector2i, to: Vector2i, id: int, alt_tile: int) -> void:
 	grid_set(to, id, alt_tile)
-	temperature_map[to] = temperature_map.get(from, 20)
+	temp_set(to,grid_get_temp(from))
 	grid_set(from, -1,0)
-	temperature_map.erase(from)
+	temp_set(from,AMBIENT_TEMP)
+	
 	
 	wake_cell(from)
 	wake_cell(to)
@@ -447,18 +519,31 @@ func swap_material(a: Vector2i, b: Vector2i) -> void:
 	var a_alt = grid_get_alt(a)
 	var b_id = grid_get_id(b)
 	var b_alt = grid_get_alt(b)
-	var a_temp = temperature_map.get(a, 20)
-	var b_temp = temperature_map.get(b, 20)
+	var a_temp = grid_get_temp(a)
+	
+	var b_temp = grid_get_temp(b)
 
 	grid_set(a, b_id, b_alt)
 	grid_set(b, a_id, a_alt)
-	temperature_map[a] = b_temp
-	temperature_map[b] = a_temp
+	
+	temp_set(a,b_temp)
+	
+	temp_set(b,a_temp)
 	
 	wake_cell(a)
 	wake_cell(b)
-
-
+#its used to move more than 1 cell at a time so cells don't phase through things, this is kind of like a raycast
+func trace_forward(cell: Vector2i, dir: Vector2i) -> Vector2i:
+	var steps=max(abs(dir.x), abs(dir.y))
+	var step=Vector2i(sign(dir.x), sign(dir.y))
+	var current=cell
+	for i in range(steps):
+		var next= current+step
+		if grid_get_id(next) == -1:
+			current=next
+		else:
+			return next 
+	return current
 
 func simulate_powder(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Dictionary) -> void:
 	var density = DensityList[ID - 1]
@@ -517,7 +602,7 @@ func simulate_fluid(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Dict
 	var density = DensityList[ID - 1]
 	var dispersion = DispersionList[ID - 1] # how many tiles sideways this material can "look" for a gap
 	var variation = grid_get_alt(cell)
-	var fwd = cell + dir # the cell directly in the preferred direction (down for water, up for steam)
+	var fwd = trace_forward(cell, dir) # the cell directly in the preferred direction (down for water, up for steam)
 	
 	#Case 1 just moving when nothing is blocking
 	if grid_get_id(fwd)==-1 and not ProccesedCells.has(cell) and not ProccesedCells.has(fwd):
@@ -572,6 +657,7 @@ func simulate_fire(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Dicti
 	if FireHealth.get(cell)<=0:
 		FireHealth.erase(cell)
 		grid_set(cell,-1,0)
+		temp_set(cell,AMBIENT_TEMP)
 		return
 	if FireHealth.get(cell)!=null:
 		FireHealth.set(cell,FireHealth.get(cell)-1)
@@ -653,9 +739,21 @@ func _on_timer_timeout() -> void:
 		for x in range(CHUNK_SIZE):
 			for y in range(CHUNK_SIZE):
 				var cell = Vector2i(initial_x + x, initial_y + y)
+				var id = grid_get_id(cell)
+				
 				updates = updates + 1
-				if ProccesedCells.has(cell) or grid_get_id(cell)==-1:
+				if ProccesedCells.has(cell) or id==-1:
 					continue #skip already proccesed cells
+				var temp = grid_get_temp(cell)
+				
+				if MaterialTransitions.has(id):
+					var rule = MaterialTransitions[id]
+					if rule.has("above") and temp > rule["above"][0]:
+						grid_set(cell, rule["above"][1], randi_range(0, 3))
+						wake_cell(cell)
+					elif rule.has("below") and temp < rule["below"][0]:
+						grid_set(cell, rule["below"][1], randi_range(0, 3))
+						wake_cell(cell)
 				match grid_get_id(cell):
 					ID_SAND:
 						simulate_powder(cell,ID_SAND,Vector2i(0,1),ProccesedCells)
@@ -680,6 +778,8 @@ func _on_timer_timeout() -> void:
 						simulate_powder(cell,ID_WOODDUST,Vector2i(0,1),ProccesedCells)
 					ID_BUTANE:
 						simulate_fluid(cell,ID_BUTANE,Vector2i(0,-1),ProccesedCells)
+					ID_ACID:
+						simulate_fluid(cell,ID_ACID,Vector2(0,2),ProccesedCells)
 					
 	active_chunks = next_active_chunks
 	next_active_chunks = {}
