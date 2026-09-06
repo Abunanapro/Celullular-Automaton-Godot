@@ -392,7 +392,7 @@ func _init_materials() -> void:
 class ChunkData:
 	var ids: PackedInt32Array     
 	var alts: PackedInt32Array    
-	var temps: PackedInt32Array   
+	var temps: PackedInt32Array      
 	var image: Image              
 	var texture: ImageTexture    
 	var sprite: Sprite2D          
@@ -519,6 +519,9 @@ var lastcellmouse:Vector2i
 var scale_val=4.0/10.0
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta: float) -> void:
+	#lag switch
+	
+	
 	if holding and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or holdingDelete and not Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
 		holding = false
 		holdingDelete=false
@@ -698,7 +701,7 @@ func move_material(from: Vector2i, to: Vector2i, id: int, alt_tile: int) -> void
 	grid_set(to, id, alt_tile)
 	temp_set(to,grid_get_temp(from))
 	grid_set(from, -1,0)
-	temp_set(from,AMBIENT_TEMP)
+	temp_set(from,grid_get_temp(to))
 	
 	
 	wake_cell(from)
@@ -914,7 +917,81 @@ func simulate_fire(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Dicti
 			ProccesedCells[cell] = true
 			ProccesedCells[cell + Vector2i(-d, 0)] = true
 
+func simulate_fire_but_real(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Dictionary, maxinitialhealth: int, mininitialhealth: int, min_sustain_temp: float) -> void:
+	var density = MATERIALS[ID].density
+	var dispersion = MATERIALS[ID].dispersion
+	var variation = grid_get_alt(cell)
+	var fwd = cell + dir
+	var temp = grid_get_temp(cell)
 
+	# --- fuel lifetime, same pattern you already had ---
+	if not FireHealth.has(cell):
+		FireHealth[cell] = randi_range(mininitialhealth, maxinitialhealth)
+	FireHealth[cell] -= 1
+
+	# fire dies if it runs out of fuel OR gets cooled below its own sustain
+	# point (e.g. doused by something cold nearby) - this second condition
+	# is the "temp-driven" extinguish you didn't have before
+	if FireHealth[cell] <= 0 or temp < min_sustain_temp:
+		FireHealth.erase(cell)
+		grid_set(cell, -1, 0)
+		temp_set(cell, AMBIENT_TEMP)
+		return
+
+	# --- be a heat source ---
+	# pin this cell's temp back up toward its material's base temp each tick.
+	# compute_chunk_temps will pull it back DOWN toward neighbor average every
+	# temptimer tick using fire's own conductivity - so this becomes a tug of
+	# war: fire keeps "burning hot", diffusion keeps "spreading it out".
+	# that push-and-pull IS the radiation, using code you already wrote.
+	temp_set(cell, MATERIALS[ID].base_temp)
+
+	# keep this chunk and its 3x3 neighborhood active so the diffusion pass
+	# and the transition-check pass actually run on them every tick -
+	# without this, a sleeping neighbor chunk would never heat up or ignite
+	wake_cell(cell)
+
+	# --- movement, same physics pattern as your powder/fluid functions ---
+	if grid_get_id(fwd) == -1 and not ProccesedCells.has(cell) and not ProccesedCells.has(fwd):
+		move_material(cell, fwd, ID, variation)
+		FireHealth[fwd] = FireHealth[cell]
+		FireHealth.erase(cell)
+		ProccesedCells[cell] = true
+		ProccesedCells[fwd] = true
+		return
+
+	if grid_get_id(fwd) != -1 and MATERIALS[grid_get_id(fwd)].density < density and not ProccesedCells.has(cell) and not ProccesedCells.has(fwd):
+		FireHealth[fwd] = FireHealth[cell]
+		FireHealth.erase(cell)
+		swap_material(cell, fwd)
+		ProccesedCells[cell] = true
+		ProccesedCells[fwd] = true
+		return
+
+	var d = 1 if randi_range(0, 1) == 1 else -1
+	var target = null
+	for x in range(1, dispersion):
+		if grid_get_id(cell + Vector2i(d*x, 0)) != -1:
+			if MATERIALS[grid_get_id(cell + Vector2i(d*x, 0))].density > density:
+				target = cell + Vector2i(d*x - d, 0)
+				break
+		if x == dispersion - 1:
+			target = cell + Vector2i(d*x - d, 0)
+
+	if randi_range(0, 1) == 1:
+		if target != null and not ProccesedCells.has(cell) and not ProccesedCells.has(target) and grid_get_id(target) == -1:
+			move_material(cell, target, ID, variation)
+			FireHealth[target] = FireHealth[cell]
+			FireHealth.erase(cell)
+			ProccesedCells[cell] = true
+			ProccesedCells[target] = true
+	else:
+		if grid_get_id(cell + Vector2i(-d, 0)) == -1 and not ProccesedCells.has(cell) and not ProccesedCells.has(cell + Vector2i(-d, 0)):
+			move_material(cell, cell + Vector2i(-d, 0), ID, variation)
+			FireHealth[cell + Vector2i(-d, 0)] = FireHealth[cell]
+			FireHealth.erase(cell)
+			ProccesedCells[cell] = true
+			ProccesedCells[cell + Vector2i(-d, 0)] = true
 func compute_chunk_temps(chunk_coord: Vector2i, chunk: ChunkData) -> PackedInt32Array:
 	var new_temps = chunk.temps.duplicate()
 	var origin = chunk_coord * CHUNK_SIZE   # world-space top-left of this chunk

@@ -386,6 +386,8 @@ size_flags_horizontal = 4
 size_flags_vertical = 4
 text = "World options"
 
+[node name="setingsmenu" type="CanvasLayer" parent="setingsmenu"]
+
 [node name="MousePreview" type="CanvasLayer" parent="."]
 
 [node name="mouse" type="Node2D" parent="MousePreview"]
