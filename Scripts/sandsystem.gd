@@ -2,29 +2,34 @@ extends Node
 
 var brush=6 #id of the material selected
 var brush_size=1
-var brushtemp= 0 #temperature of brush
+var brushtemp= 20 #temperature of brush
 @onready var world_container=$WorldContainer
 
 const CHUNK_SIZE = 16
 const CELL_PIXEL_SIZE = 8
 var AMBIENT_TEMP = 20 #its a var bcs I want to make it so you can change it in config :P
+var MATERIALS: Dictionary = {}
 #COLORS:
-const MaterialColors = {
-	-1: Color(0, 0, 0, 0),           # air
-	1: Color(0.87, 0.73, 0.35, 1.0), # sand
-	2: Color(0.2, 0.4, 0.9, 0.8),    # water
-	3: Color(0.125, 0.073, 0.01, 1.0),   # dirt
-	4: Color(0.8, 0.8, 0.85, 0.5),   # steam
-	5: Color(1.0, 0.4, 0.1, 1.0),    # fire
-	6:Color(0.294, 0.179, 0.063, 1.0), #wood
-	7:Color(0.05, 0.05, 0.05, 1.0), #oil
-	8:Color(0.41, 0.0, 0.0, 1.0), #magma
-	9:Color(0.059, 0.89, 0.0, 1.0), #acid
-	10:Color(0.095, 0.476, 0.783, 0.9), #ice
-	11:Color(0.634, 0.842, 1.0, 0.7), #glass
-	12:Color(0.819, 0.613, 0.284, 1.0),#wood dust
-	13:Color(0.137, 0.115, 0.088, 0.5) #butane
-}
+#var MaterialColors = {
+	#-1: Color(0, 0, 0, 0),           # air
+	#1: Color(0.87, 0.73, 0.35, 1.0), # sand
+	#2: Color(0.2, 0.4, 0.9, 0.8),    # water
+	#3: Color(0.125, 0.073, 0.01, 1.0),   # dirt
+	#4: Color(0.8, 0.8, 0.85, 0.5),   # steam
+	#5: Color(1.0, 0.4, 0.1, 1.0),    # fire
+	#6:Color(0.294, 0.179, 0.063, 1.0), #wood
+	#7:Color(0.05, 0.05, 0.05, 1.0), #oil
+	#8:Color(0.41, 0.0, 0.0, 1.0), #magma
+	#9:Color(0.059, 0.89, 0.0, 1.0), #acid
+	#10:Color(0.095, 0.476, 0.783, 0.9), #ice
+	#11:Color(0.634, 0.842, 1.0, 0.7), #glass
+	#12:Color(0.819, 0.613, 0.284, 1.0),#wood dust
+	#13:Color(0.137, 0.115, 0.088, 0.5), #butane
+	#14:Color(0.9, 0.604, 0.216, 1.0), #copper
+	#15:Color(0.68, 0.606, 0.536, 1.0),#iron
+	#16:Color(0.973, 0.707, 0.384, 1.0),#liquid copper
+	#17:Color(0.792, 0.73, 0.671, 1.0),#liquid Iron
+#}
 
 const ID_SAND  = 1
 const ID_WATER =2
@@ -39,57 +44,97 @@ const ID_ICE=10
 const ID_GLASS=11
 const ID_WOODDUST=12
 const ID_BUTANE=13
+const ID_COPPER=14
+const ID_IRON=15
+const ID_LIQUID_COPPER=16
+const ID_LIQUID_IRON=17
 
-var MaterialTemps = { #material temperatures
-	0:AMBIENT_TEMP,
-	1: 20,
-	 2: 20,
-	 3: 20,
-	 4: 100,
-	 5: 400,
-	 6: 20,
-	 7: 20,
-	8: 800,
-	 9: 20,
-	 10: -10,
-	 11: 20, 
-	12: 20,
-	 13: 20,
-}
-const HEAT_CONDUCTION = 0.15 # how fast heat spreads per tick, 0-1
+#const MaterialConductivity = {
+	#-1: 0.02,   # air
+	#1: 0.12,  # sand
+	#2:  0.25, # water
+	#3: 0.08,  # dirt
+	#4:  0.05,  # steam
+	#5:  0.35, # fire 
+	#6:  0.04,  # wood
+	 #7: 0.06,  # oil
+	#8:  0.40,  # magma
+	 #9:  0.20, # acid
+	#10: 0.15,  # ice
+	#11: 0.03, # glass
+	#12: 0.05,  # wood dust
+	 #13:0.05,# butane
+	#14:0.8, #copper
+	#15:0.5, #iron
+	#16:0.5, #liquid copper
+	#17:0.35,#liquid iron
+#}
 
+#var MaterialTemps = { #material temperatures
+	#0:AMBIENT_TEMP,
+	#1: 20,
+	 #2: 20,
+	 #3: 20,
+	 #4: 100,
+	 #5: 400,
+	 #6: 20,
+	 #7: 20,
+	#8: 900,
+	 #9: 20,
+	 #10: -10,
+	 #11: 20, 
+	#12: 20,
+	 #13: 20,
+	#14:20 ,
+	#15:20,
+	#16:1100,
+	#17:1540,
+#}
+const HEAT_CONDUCTION = 0.15 
+var thermal_vision = false          # toggled with T
+const THERMAL_MIN = -50.0           # coldest temp shown (blue)
+const THERMAL_MAX = 800.0           # hottest temp shown (red)
 # id: {"above": [threshold_temp, new_id], "below": [threshold_temp, new_id]}
-const MaterialTransitions = {
-	ID_WATER:  {"below": [0, ID_ICE],    "above": [100, ID_STEAM]},
-	ID_ICE:    {"above": [0, ID_WATER]},
-	ID_STEAM:  {"below": [95, ID_WATER]},
-	ID_WOOD:   {"above": [250, ID_FIRE]},
-	ID_OIL:    {"above": [300, ID_FIRE]},
-	ID_BUTANE: {"above": [200, ID_FIRE]},
-	ID_MAGMA:  {"below": [700, ID_DIRT]},
-}
-const DensityList=[1.5,1,99,0.5,0.3,99,1.2,4,1,99,99,1.2,0.6]
-const CDispersionList=[2,5,0,5,2,0,6,2,5,0,0,2,7]
-var DispersionList=[2,5,0,5,2]
-const ActiveMaterialList=[1,2,4,5,7,8,9,12,13] #Place here material IDS that you want to "tick"
-const MaterialNames=["0","Sand","Water","Dirt","Steam","Fire","Wood","Oil","Magma","Acid","Ice","Glass","Wood Dust","Butane","Air"]#names  of each material related to id, always keep the 0 and the air names so this works porperly
+#const MaterialTransitions = {
+	#ID_WATER:  {"below": [0, ID_ICE],    "above": [100, ID_STEAM]},
+	#ID_ICE:    {"above": [0, ID_WATER]},
+	#ID_STEAM:  {"below": [95, ID_WATER]},
+	#ID_WOOD:   {"above": [250, ID_FIRE]},
+	#ID_OIL:    {"above": [300, ID_FIRE]},
+	#ID_BUTANE: {"above": [200, ID_FIRE]},
+	#ID_MAGMA:  {"below": [700, ID_DIRT]},
+	#ID_COPPER:{"above": [1085, ID_LIQUID_COPPER]},
+	#ID_LIQUID_COPPER:{"below": [1075, ID_COPPER]},
+	#ID_IRON:{"above": [1538, ID_LIQUID_IRON]},
+	#ID_LIQUID_IRON:{"below": [1530, ID_IRON]},
+#}
+#const DensityList=[1.5,1,99,0.5,0.3,99,1.2,4,1,99,99,1.2,0.6,99,99,8,9]
+
+
+#const ActiveMaterialList=[1,2,4,5,7,8,9,12,13,16,17] #Place here material IDS that you want to "tick"
+#const MaterialNames=["0","KEY_SAND","KEY_WATER","KEY_DIRT","Steam","Fire","Wood","Oil","Magma","Acid","Ice","Glass","Wood Dust","Butane","Copper","Iron","Molten Copper","Molten Iron","Air"]#names  of each material related to id, always keep the 0 and the air names so this works porperly
 #type (0=no variation, 1=normal variation, 2=lower variation, 3=hue shift warm, 4=hue shift cool, 5=desaturate, 6=saturate, 7=alpha flicker)
-const VaryTypeList=[
-	0,#air
-	1,#sand
-	1,#water
-	1,#dirt
-	7,#steam
-	3,#fire
-	1,#wood
-	2,#oil
-	7,#magma 
-	2,#acid
-	4,#ice
-	2,#glass
-	1,#wooddust
-	7#butane
-]
+#const VaryTypeList=[
+	#0,#air
+	#1,#sand
+	#1,#water
+	#1,#dirt
+	#7,#steam
+	#3,#fire
+	#1,#wood
+	#2,#oil
+	#7,#magma 
+	#2,#acid
+	#4,#ice
+	#2,#glass
+	#1,#wooddust
+	#7,#butane
+	#1,#copper
+	#1,#iron
+	#3,#copper liquid
+	#3,#iron liquid
+	#
+#]
 #-----
 
 var FireHealth: Dictionary={}
@@ -105,6 +150,8 @@ var delete=false
 var lastmaterialbrush=6
 #Config Vars
 var dispersioning=true #activates or desactivates the disperison property
+var tempignoressleeping = false
+var wakeuptempmargin = 100 #if neighbor temp diference greater than this number then this cell will wake himself up
 #Volime Vars
 var globalvolume = 1
 #Stat Vars
@@ -113,8 +160,9 @@ var WaterUpdates = 0
 var SteamUpdates = 0
 # Called when the node enters the scene tree for the first time.
 #Important paths
-@onready var tilemap = $TileMapLayer
+#@onready var tilemap = $TileMapLayer no longer used :D
 @onready var timer = $Timer
+@onready var temptimer = $temptimer
 #Interface Path Vars
 #labels
 #game stat labels
@@ -145,6 +193,7 @@ var settings_was_pressed = false
 @onready var brushsizeslider=$"../setingsmenu/Control/MarginContainer/MarginContainer/VBoxContainer/Brush Size/BrushSizeSlider"
 #settings menu check buttons
 @onready var DispersionButton=$"../setingsmenu/Control/MarginContainer/MarginContainer/VBoxContainer/dispersion/CheckButton"
+@onready var tempignoressleepbuton=$"../setingsmenu/Control/MarginContainer/MarginContainer/VBoxContainer/tempignoresleep/CheckButton"
 #line edits
 @onready var brushlineedit=$"../CanvasLayer/UI/MarginContainer3/HBoxContainer/brush"
 @onready var canvaslineedit=$"../CanvasLayer/UI/MarginContainer3/HBoxContainer/canvas"
@@ -229,6 +278,116 @@ func grid_set(cell: Vector2i, id: int, alt: int) -> void:
 	chunk.ids[local_index(cell)]=id
 	chunk.alts[local_index(cell)]=alt
 	dirty_cells[cell] = true
+class MaterialData:
+	var id: int
+	var name_key: String = "KEY_UNKNOWN"
+	var color: Color = Color.WHITE
+	var density: float = 99.0
+	var conductivity: float = 0.15
+	var base_temp: float = 20.0
+	var vary_type: int = 0
+	var dispersion: int = 0
+	var is_active: bool = false
+	var transitions: Dictionary = {}
+
+	func _init(p_id := -1, p_name_key := "KEY_UNKNOWN", p_color := Color.WHITE,p_density := 99.0, p_conductivity := 0.15, p_base_temp := 20.0,p_vary_type := 0, p_dispersion := 0, p_active := false,p_transitions := {}) -> void:
+		id = p_id
+		name_key = p_name_key
+		color = p_color
+		density = p_density
+		conductivity = p_conductivity
+		base_temp = p_base_temp
+		vary_type = p_vary_type
+		dispersion = p_dispersion
+		is_active = p_active
+		transitions = p_transitions
+
+func _init_materials() -> void:
+	MATERIALS[-1] = MaterialData.new(
+		-1, "KEY_AIR", Color(0, 0, 0, 0),
+		0.0, 0.02, AMBIENT_TEMP, 0, 0, false, {}
+	)
+	MATERIALS[ID_SAND] = MaterialData.new(
+		ID_SAND, "KEY_SAND", Color(0.87, 0.73, 0.35, 1.0),
+		1.5, 0.12, 20.0, 1, 2, true, {}
+	)
+	MATERIALS[ID_WATER] = MaterialData.new(
+		ID_WATER, "KEY_WATER", Color(0.2, 0.4, 0.9, 0.8),
+		1.0, 0.25, 20.0, 1, 5, true,
+		{"below": [0, ID_ICE], "above": [100, ID_STEAM]}
+	)
+	MATERIALS[ID_DIRT] = MaterialData.new(
+		ID_DIRT, "KEY_DIRT", Color(0.125, 0.073, 0.01, 1.0),
+		99.0, 0.08, 20.0, 1, 0, false, {}
+	)
+	MATERIALS[ID_STEAM] = MaterialData.new(
+		ID_STEAM, "KEY_STEAM", Color(0.8, 0.8, 0.85, 0.5),
+		0.5, 0.05, 100.0, 7, 5, true,
+		{"below": [95, ID_WATER]}
+	)
+	MATERIALS[ID_FIRE] = MaterialData.new(
+		ID_FIRE, "KEY_FIRE", Color(1.0, 0.4, 0.1, 1.0),
+		0.3, 0.35, 400.0, 3, 2, true, {}
+	)
+	MATERIALS[ID_WOOD] = MaterialData.new(
+		ID_WOOD, "KEY_WOOD", Color(0.294, 0.179, 0.063, 1.0),
+		99.0, 0.04, 20.0, 1, 0, false,
+		{"above": [250, ID_FIRE]}
+	)
+	MATERIALS[ID_OIL] = MaterialData.new(
+		ID_OIL, "KEY_OIL", Color(0.05, 0.05, 0.05, 1.0),
+		1.2, 0.06, 20.0, 2, 6, true,
+		{"above": [300, ID_FIRE]}
+	)
+	MATERIALS[ID_MAGMA] = MaterialData.new(
+		ID_MAGMA, "KEY_MAGMA", Color(0.41, 0.0, 0.0, 1.0),
+		4.0, 0.40, 900.0, 7, 2, true,
+		{"below": [700, ID_DIRT]}
+	)
+	MATERIALS[ID_ACID] = MaterialData.new(
+		ID_ACID, "KEY_ACID", Color(0.059, 0.89, 0.0, 1.0),
+		1.0, 0.20, 20.0, 2, 5, true, {}
+	)
+	MATERIALS[ID_ICE] = MaterialData.new(
+		ID_ICE, "KEY_ICE", Color(0.095, 0.476, 0.783, 0.9),
+		99.0, 0.15, -10.0, 4, 0, false,
+		{"above": [0, ID_WATER]}
+	)
+	MATERIALS[ID_GLASS] = MaterialData.new(
+		ID_GLASS, "KEY_GLASS", Color(0.634, 0.842, 1.0, 0.7),
+		99.0, 0.03, 20.0, 2, 0, false, {}
+	)
+	MATERIALS[ID_WOODDUST] = MaterialData.new(
+		ID_WOODDUST, "KEY_WOOD_DUST", Color(0.819, 0.613, 0.284, 1.0),
+		1.2, 0.05, 20.0, 1, 2, true, {}
+	)
+	MATERIALS[ID_BUTANE] = MaterialData.new(
+		ID_BUTANE, "KEY_BUTANE", Color(0.137, 0.115, 0.088, 0.5),
+		0.6, 0.05, 20.0, 7, 7, true,
+		{"above": [200, ID_FIRE]}
+	)
+	MATERIALS[ID_COPPER] = MaterialData.new(
+		ID_COPPER, "KEY_COPPER", Color(0.9, 0.604, 0.216, 1.0),
+		99.0, 0.8, 20.0, 1, 0, false,
+		{"above": [1085, ID_LIQUID_COPPER]}
+	)
+	MATERIALS[ID_IRON] = MaterialData.new(
+		ID_IRON, "KEY_IRON", Color(0.68, 0.606, 0.536, 1.0),
+		99.0, 0.5, 20.0, 1, 5, false,
+		{"above": [1538, ID_LIQUID_IRON]}
+	)
+	MATERIALS[ID_LIQUID_COPPER] = MaterialData.new(
+		ID_LIQUID_COPPER, "KEY_MOLTEN_COPPER", Color(0.973, 0.707, 0.384, 1.0),
+		8.0, 0.5, 1100.0, 3, 0, true,
+		{"below": [1075, ID_COPPER]}
+	)
+	MATERIALS[ID_LIQUID_IRON] = MaterialData.new(
+		ID_LIQUID_IRON, "KEY_MOLTEN_IRON", Color(0.792, 0.73, 0.671, 1.0),
+		9.0, 0.35, 1540.0, 3, 5, true,
+		{"below": [1530, ID_IRON]}
+	)
+
+
 
 class ChunkData:
 	var ids: PackedInt32Array     
@@ -256,6 +415,19 @@ func mouse_to_cell() -> Vector2i:
 	var mouse_pos = get_viewport().get_mouse_position()
 	var local_pos= world_container.to_local(mouse_pos)
 	return Vector2i(floori(local_pos.x / CELL_PIXEL_SIZE), floori(local_pos.y / CELL_PIXEL_SIZE))
+
+func force_redraw_all() -> void:
+	for chunk_coord in chunks.keys():
+		var chunk: ChunkData = chunks[chunk_coord]
+		for ly in range(CHUNK_SIZE):
+			for lx in range(CHUNK_SIZE):
+				var cell = chunk_coord * CHUNK_SIZE + Vector2i(lx, ly)
+				dirty_cells[cell] = true
+func temp_to_color(temp: int, is_air: bool = false) -> Color:
+	var t = clamp(inverse_lerp(THERMAL_MIN, THERMAL_MAX, temp), 0.0, 1.0)
+	var hue = lerp(0.66, 0.0, t)
+	var alpha = 0.25 if is_air else 1.0
+	return Color.from_hsv(hue, 0.9, 1.0, alpha)
 #updates the images shown it used to use tilemap thats why it has this name ...
 func sync_tilemap() ->void:
 	if dirty_cells.is_empty():
@@ -267,9 +439,15 @@ func sync_tilemap() ->void:
 		ensure_chunk_sprite(chunk_coord, chunk)
 		var idx = local_index(cell)
 		var material_id = chunk.ids[idx]
-		var base_color = MaterialColors.get(material_id, Color(1, 0, 1, 1))
-		var alt = chunk.alts[idx]
-		var color = vary_color(base_color, alt,material_id,VaryTypeList)
+		var color: Color
+
+		if thermal_vision :
+			# debug mode: color represents temperature instead of material
+			color = temp_to_color(chunk.temps[idx], material_id == -1)
+		else:
+			var base_color = MATERIALS[material_id].color
+			var alt = chunk.alts[idx]
+			color = vary_color(base_color, alt, material_id)
 		var lx =((cell.x % CHUNK_SIZE)+CHUNK_SIZE)%CHUNK_SIZE
 		var ly=((cell.y % CHUNK_SIZE)+CHUNK_SIZE)%CHUNK_SIZE
 		chunk.image.set_pixel(lx, ly, color)
@@ -279,12 +457,13 @@ func sync_tilemap() ->void:
 		chunk.texture.update(chunk.image)
 	dirty_cells.clear()
 	#vary the color of the materials
-func vary_color(base: Color, alt: int, id:int,VaryTypeList:Array) -> Color:
+func vary_color(base: Color, alt: int, id:int) -> Color:
 	if base.a == 0.0:
 		return base
 
 	var factor
-	match VaryTypeList[id]:
+	match MATERIALS[id].vary_type:
+		
 		0: # no variation
 			return base
 		1: # normal brightness
@@ -293,27 +472,31 @@ func vary_color(base: Color, alt: int, id:int,VaryTypeList:Array) -> Color:
 		2: # low brightness
 			factor = [1.0, 0.95, 1.05, 0.98][alt % 4]
 			return Color(clamp(base.r*factor,0,1), clamp(base.g*factor,0,1), clamp(base.b*factor,0,1), base.a)
-		3: # hue shift warm (fire-like)
+		3: # hue shift warm
 			factor = [0.0, 0.01, 0.03, 0.02][alt % 4]
 			return Color.from_hsv(wrapf(base.h+factor,0,1), base.s, clamp(base.v*1.1,0,1), base.a)
-		4: # hue shift cool (water/ice-like)
+		4: # hue shift cool 
 			factor = [0.0, -0.01, -0.03, -0.02][alt % 4]
 			return Color.from_hsv(wrapf(base.h+factor,0,1), base.s, base.v, base.a)
-		5: # desaturate (sand/dirt-like)
+		5: # desaturate 
 			factor = [1.0, 0.9, 0.85, 0.95][alt % 4]
 			return Color.from_hsv(base.h, clamp(base.s*factor,0,1), base.v, base.a)
-		6: # saturate (acid-like)
+		6: # saturate
 			factor = [1.0, 1.1, 1.3, 1.2][alt % 4]
 			return Color.from_hsv(base.h, clamp(base.s*factor,0,1), base.v, base.a)
-		7: # alpha flicker (steam/butane-like)
+		7: # alpha flicker 
 			factor = [1.0, 0.7, 0.9, 0.8][alt % 4]
 			return Color(base.r, base.g, base.b, clamp(base.a*factor,0,1))
 
 	return base
 func _ready() -> void:
-	
-	
+	_init_materials()
 
+
+	
+	
+	temptimer.wait_time = 0.3   
+	temptimer.start()
 
 	timer.timeout.connect(_on_timer_timeout) #this makes shure the signal is conneted ti timer
 	timer.start()   #starts timer just in case it is not starting for some weird reason...
@@ -347,7 +530,7 @@ func _process(delta: float) -> void:
 		tempselectedLabel.text=str(AMBIENT_TEMP)+"Cº"
 	
 	if grid_get_id(mouse_to_cell()):
-		selectedmaterialLabel.text=str(MaterialNames[grid_get_id(mouse_to_cell())])
+		selectedmaterialLabel.text=str(MATERIALS[grid_get_id(mouse_to_cell())].name_key)
 	else:
 		selectedmaterialLabel.text="null"
 		
@@ -385,10 +568,10 @@ func _process(delta: float) -> void:
 		world_container.scale = Vector2(new_s, new_s)
 	CanvasScaleLabel.text = "Scale: %.1fx" % new_s
 #dispersion toggle
-	if DispersionButton.button_pressed==true:
-		DispersionList=CDispersionList
-	else:
-		DispersionList=[2,2,0,2]
+	dispersioning=DispersionButton.button_pressed
+	
+	#tempsleeptoggle
+	tempignoressleeping = tempignoressleepbuton.button_pressed
 	#Main
 	if holding or holdingDelete:
 		var mouse_pos = get_viewport().get_mouse_position()
@@ -409,10 +592,13 @@ func _process(delta: float) -> void:
 				
 	# WASD pan
 	var dir = Vector2(int(Input.is_key_pressed(KEY_A))-int(Input.is_key_pressed(KEY_D)),int(Input.is_key_pressed(KEY_W))-int(Input.is_key_pressed(KEY_S)))
+	var Adir = Vector2(int(Input.is_key_pressed(KEY_LEFT))-int(Input.is_key_pressed(KEY_RIGHT)),int(Input.is_key_pressed(KEY_UP))-int(Input.is_key_pressed(KEY_DOWN)))
 	#this moves tilemap with wasd using pan speed :D
 	if dir != Vector2.ZERO:
 		world_container.position += dir.normalized() * pan_speed * delta
-		
+	if Adir != Vector2.ZERO:
+		world_container.position += Adir.normalized() * pan_speed * delta
+	
 	sync_tilemap()
 	lastcellmouse=mouse_to_cell()
 
@@ -424,6 +610,13 @@ func updatebrush():
 	
 	
 func _input(event:InputEvent) -> void:
+	if event is InputEventKey and event.pressed and event.keycode == KEY_C:
+		cleanup_empty_chunks()
+	
+	if event is InputEventKey and event.pressed and event.keycode == KEY_T:
+		thermal_vision = !thermal_vision
+		force_redraw_all()
+	
 	if get_viewport().gui_get_hovered_control() != null:
 		updatebrush()
 		return
@@ -452,7 +645,7 @@ func _input(event:InputEvent) -> void:
 		panning = event.pressed
 	
 	if event is InputEventMouseMotion and panning:
-		tilemap.position += event.relative
+		world_container.position += event.relative
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP and Input.is_key_pressed(KEY_CTRL):
 			brushsizeslider.value = min(100.0, brushsizeslider.value + 1)
@@ -546,7 +739,7 @@ func trace_forward(cell: Vector2i, dir: Vector2i) -> Vector2i:
 	return current
 
 func simulate_powder(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Dictionary) -> void:
-	var density = DensityList[ID - 1]
+	var density = MATERIALS[ID].density
 	var variation = grid_get_alt(cell)
 
 	var fwd = cell + dir                          # straight ahead (e.g. directly below)
@@ -561,7 +754,7 @@ func simulate_powder(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Dic
 		ProccesedCells[fwd]=true
 		return 
 	#case 2 where we want to move to is occupied by something LESS dense
-	if grid_get_id(fwd)!=-1 and DensityList[grid_get_id(fwd) - 1]< density and not ProccesedCells.has(fwd) and not ProccesedCells.has(cell):
+	if grid_get_id(fwd)!=-1 and MATERIALS[grid_get_id(fwd)].density< density and not ProccesedCells.has(fwd) and not ProccesedCells.has(cell):
 		swap_material(cell,fwd)
 		ProccesedCells[cell]=true
 		ProccesedCells[fwd]=true
@@ -574,8 +767,8 @@ func simulate_powder(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Dic
 			ProccesedCells[diag_left] = true
 			return
 			#try to swap lighter materials that are on our diag left
-		if grid_get_id(side_left) != -1 and grid_get_id(diag_left) != -1 and DensityList[grid_get_id(side_left) - 1] != null and DensityList[grid_get_id(diag_left) - 1] != null:
-			if DensityList[grid_get_id(diag_left) - 1] < density and DensityList[grid_get_id(side_left) - 1] < density and not ProccesedCells.has(cell) and not ProccesedCells.has(diag_left):
+		if grid_get_id(side_left) != -1 and grid_get_id(diag_left) != -1 and MATERIALS[grid_get_id(side_left)].density != null and MATERIALS[grid_get_id(diag_left)].density != null:
+			if MATERIALS[grid_get_id(diag_left)].density < density and MATERIALS[grid_get_id(side_left)].density < density and not ProccesedCells.has(cell) and not ProccesedCells.has(diag_left):
 				swap_material(cell, diag_left)
 				ProccesedCells[cell] = true
 				ProccesedCells[diag_left] = true
@@ -588,8 +781,8 @@ func simulate_powder(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Dic
 			ProccesedCells[diag_right] = true
 			return
 		#try to swap lighter materials that are on our diag right
-		if grid_get_id(side_right) != -1 and grid_get_id(diag_right) != -1 and DensityList[grid_get_id(side_right) - 1] != null and DensityList[grid_get_id(diag_right) - 1] != null:
-			if DensityList[grid_get_id(diag_right) - 1] < density and DensityList[grid_get_id(side_right) - 1] < density and not ProccesedCells.has(cell) and not ProccesedCells.has(diag_right):
+		if grid_get_id(side_right) != -1 and grid_get_id(diag_right) != -1 and MATERIALS[grid_get_id(side_right)].density != null and MATERIALS[grid_get_id(diag_right)].density != null:
+			if MATERIALS[grid_get_id(diag_right)].density < density and MATERIALS[grid_get_id(side_right)].density < density and not ProccesedCells.has(cell) and not ProccesedCells.has(diag_right):
 				swap_material(cell, diag_right)
 				ProccesedCells[cell] = true
 				ProccesedCells[diag_right] = true
@@ -599,8 +792,11 @@ func simulate_powder(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Dic
 #   Vector2i(0, 1)  = down 
 #   Vector2i(0, -1) = up  
 func simulate_fluid(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Dictionary) -> void:
-	var density = DensityList[ID - 1]
-	var dispersion = DispersionList[ID - 1] # how many tiles sideways this material can "look" for a gap
+	var density = MATERIALS[ID].density
+	
+	var dispersion = MATERIALS[ID].dispersion # how many tiles sideways this material can "look" for a gap
+	if dispersioning==false:
+		dispersion=2
 	var variation = grid_get_alt(cell)
 	var fwd = trace_forward(cell, dir) # the cell directly in the preferred direction (down for water, up for steam)
 	
@@ -611,7 +807,7 @@ func simulate_fluid(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Dict
 		ProccesedCells[fwd] = true
 		return
 	#Case 2 the cell where we want to move to is occupied by something less dense than our material
-	if grid_get_id(fwd) != -1 and DensityList[grid_get_id(fwd) - 1] < density and not ProccesedCells.has(cell) and not ProccesedCells.has(fwd):
+	if grid_get_id(fwd) != -1 and MATERIALS[grid_get_id(fwd)].density < density and not ProccesedCells.has(cell) and not ProccesedCells.has(fwd):
 		swap_material(cell, fwd)
 		ProccesedCells[cell] = true
 		ProccesedCells[fwd] = true
@@ -621,7 +817,7 @@ func simulate_fluid(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Dict
 	var target=null
 	for x in range(1,dispersion):
 		if grid_get_id(cell+Vector2i(d*x,0))!=-1 : #check if cell not empty
-			if DensityList[grid_get_id(cell+Vector2i(d*x,0))-1]>density :
+			if MATERIALS[grid_get_id(cell+Vector2i(d*x,0))].density>density :
 					target=cell+Vector2i(d*x-d,0)
 					break
 		if x==dispersion-1:
@@ -647,8 +843,8 @@ func simulate_viscous(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Di
 	simulate_fluid(cell, ID, dir, ProccesedCells)
 #simulate fire material 
 func simulate_fire(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Dictionary, canburnlist:Array,flammability:float,maxinitialhealth:int,mininitialhealth:int) -> void:
-	var density = DensityList[ID - 1]
-	var dispersion = DispersionList[ID - 1] # how many tiles sideways this material can "look" for a gap
+	var density = MATERIALS[ID].density
+	var dispersion = MATERIALS[ID].dispersion # how many tiles sideways this material can "look" for a gap
 	var variation = grid_get_alt(cell)
 	var fwd = cell + dir # the cell directly in the preferred direction (down for water, up for steam)
 	var initialhealth=randi_range(mininitialhealth,maxinitialhealth)
@@ -681,7 +877,7 @@ func simulate_fire(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Dicti
 		ProccesedCells[fwd] = true
 		return
 	#Case 2 the cell where we want to move to is occupied by something less dense than our material
-	if grid_get_id(fwd) != -1 and DensityList[grid_get_id(fwd) - 1] < density and not ProccesedCells.has(cell) and not ProccesedCells.has(fwd):
+	if grid_get_id(fwd) != -1 and MATERIALS[grid_get_id(fwd)].density < density and not ProccesedCells.has(cell) and not ProccesedCells.has(fwd):
 		FireHealth.set(fwd, FireHealth.get(cell))
 		FireHealth.erase(cell)
 		swap_material(cell, fwd)
@@ -693,7 +889,7 @@ func simulate_fire(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Dicti
 	var target=null
 	for x in range(1,dispersion):
 		if grid_get_id(cell+Vector2i(d*x,0))!=-1 : #check if cell not empty
-			if DensityList[grid_get_id(cell+Vector2i(d*x,0))-1]>density :
+			if MATERIALS[grid_get_id(cell+Vector2i(d*x,0))].density>density :
 					target=cell+Vector2i(d*x-d,0)
 					break
 		if x==dispersion-1:
@@ -719,9 +915,39 @@ func simulate_fire(cell: Vector2i, ID: int, dir: Vector2i, ProccesedCells: Dicti
 			ProccesedCells[cell + Vector2i(-d, 0)] = true
 
 
+func compute_chunk_temps(chunk_coord: Vector2i, chunk: ChunkData) -> PackedInt32Array:
+	var new_temps = chunk.temps.duplicate()
+	var origin = chunk_coord * CHUNK_SIZE   # world-space top-left of this chunk
+
+	for ly in range(CHUNK_SIZE):
+		for lx in range(CHUNK_SIZE):
+			var idx = ly * CHUNK_SIZE + lx
+			var cell_temp = chunk.temps[idx]
+			var cell_id = chunk.ids[idx]
+			var total = 0
+			for offset in [Vector2i(0,-1), Vector2i(0,1), Vector2i(-1,0), Vector2i(1,0)]:
+				var nlx = lx + offset.x
+				var nly = ly + offset.y
+				var neighbor_temp: int
+				if nlx >= 0 and nlx < CHUNK_SIZE and nly >= 0 and nly < CHUNK_SIZE:#if inside our chunk
+					neighbor_temp = chunk.temps[nly * CHUNK_SIZE + nlx] 
+				else:# not in our chunk
+					neighbor_temp = grid_get_temp(origin + Vector2i(nlx, nly))  
+					if neighbor_temp == -1: #if there is no chunk 
+						neighbor_temp = AMBIENT_TEMP  
+				total += neighbor_temp #sum to the total
+			var avg_neighbor_temp = total / 4.0# average temperature result
+			var conductivity = MATERIALS[cell_id].conductivity#heat conduction
+			var cell = origin + Vector2i(lx, ly)
+			if ((avg_neighbor_temp - cell_temp) * conductivity + cell_temp) > wakeuptempmargin:
+				wake_cell(cell)
+			new_temps[idx] = int(round((avg_neighbor_temp - cell_temp) * conductivity + cell_temp))# heat calculation result Temp difference*conduction+current cell temp
+	
+	return new_temps
+
 func _on_timer_timeout() -> void:
 	
-	print("Chunks activos: ", active_chunks.size())
+	
 	updateslabel.text=("Active pixels: "+str(updates))
 	updates=0
 	SandUpdates=0
@@ -735,6 +961,8 @@ func _on_timer_timeout() -> void:
 		#calculates the start of the chunk
 		var initial_x = chunk_coord.x * CHUNK_SIZE
 		var initial_y = chunk_coord.y * CHUNK_SIZE
+		
+		
 		#simulate the chunk
 		for x in range(CHUNK_SIZE):
 			for y in range(CHUNK_SIZE):
@@ -745,9 +973,8 @@ func _on_timer_timeout() -> void:
 				if ProccesedCells.has(cell) or id==-1:
 					continue #skip already proccesed cells
 				var temp = grid_get_temp(cell)
-				
-				if MaterialTransitions.has(id):
-					var rule = MaterialTransitions[id]
+				if MATERIALS[id].transitions:
+					var rule = MATERIALS[id].transitions
 					if rule.has("above") and temp > rule["above"][0]:
 						grid_set(cell, rule["above"][1], randi_range(0, 3))
 						wake_cell(cell)
@@ -784,3 +1011,45 @@ func _on_timer_timeout() -> void:
 	active_chunks = next_active_chunks
 	next_active_chunks = {}
 	
+
+func is_chunk_empty(chunk: ChunkData) -> bool:
+	for id in chunk.ids:
+		if id != -1:
+			return false
+	return true
+func cleanup_empty_chunks() -> void:
+	var removed = 0
+	for chunk_coord in chunks.keys():
+		var chunk: ChunkData = chunks[chunk_coord]
+		if is_chunk_empty(chunk):
+			if chunk.sprite != null:
+				chunk.sprite.queue_free()
+			chunks.erase(chunk_coord)
+			active_chunks.erase(chunk_coord)
+			next_active_chunks.erase(chunk_coord)
+			removed += 1
+	print("Cleaned up ", removed, " empty chunks")
+func _on_temptimer_timeout() -> void:
+	var new_temps_by_chunk: Dictionary = {}
+	var chunktype
+	if tempignoressleeping==true:
+		chunktype=chunks.keys()
+	else:
+		chunktype=active_chunks.keys()
+	for chunk_coord in chunktype:
+		var chunk = get_chunk(chunk_coord, true)
+		new_temps_by_chunk[chunk_coord] = compute_chunk_temps(chunk_coord, chunk)
+	for chunk_coord in new_temps_by_chunk.keys():
+		chunks[chunk_coord].temps = new_temps_by_chunk[chunk_coord]
+
+
+func _on_chunkcleaner_timeout() -> void:
+	print("-------------------------")
+	print("Before FPS: "+str(Engine.get_frames_per_second()))
+	print("Executing Autocleaner...")
+	print("Running time:",Time.get_ticks_msec()/1000,"sec")
+	print("Before Active chunks: ", active_chunks.size())
+	cleanup_empty_chunks()
+	print("After Active chunks: ", active_chunks.size())
+	print("After FPS: "+str(Engine.get_frames_per_second()))
+	print("-------------------------")

@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3 uid="uid://nlqdtlnwamo6"]
+[gd_scene load_steps=14 format=3 uid="uid://nlqdtlnwamo6"]
 
 [ext_resource type="Script" uid="uid://fu4hemtnqy6w" path="res://Scripts/sandsystem.gd" id="1_b2bpf"]
 [ext_resource type="Texture2D" uid="uid://d3c5hdobsa5kq" path="res://Textures/sand.png" id="2_kldst"]
@@ -11,76 +11,7 @@
 [ext_resource type="Script" uid="uid://duyghppejvkwr" path="res://Scenes/autobutton_maker.gd" id="7_dahhg"]
 [ext_resource type="Texture2D" uid="uid://dk5ltye3ej1w0" path="res://icon.png" id="7_fgofq"]
 [ext_resource type="FontFile" uid="uid://bdc17o426iqte" path="res://Textures/Fonts/minecraft-seven/seven.ttf" id="8_2irst"]
-
-[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_maiyi"]
-texture = ExtResource("2_kldst")
-0:0/next_alternative_id = 9
-0:0/0 = 0
-0:0/1 = 1
-0:0/1/modulate = Color(0.96474224, 0.96474224, 0.9647421, 1)
-0:0/2 = 2
-0:0/2/modulate = Color(1.0576311, 1.0576311, 1.0576311, 1)
-0:0/3 = 3
-0:0/3/modulate = Color(1, 0.998, 0.97, 1)
-
-[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_gl6un"]
-texture = ExtResource("3_b2bpf")
-0:0/next_alternative_id = 4
-0:0/0 = 0
-0:0/1 = 1
-0:0/1/modulate = Color(0.97, 0.97, 0.97, 1)
-0:0/2 = 2
-0:0/2/modulate = Color(0.98, 0.98, 0.98, 1)
-0:0/3 = 3
-0:0/3/modulate = Color(0.96, 0.96, 0.96, 1)
-
-[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_j5yw3"]
-texture = ExtResource("4_7lihs")
-0:0/next_alternative_id = 4
-0:0/0 = 0
-0:0/0/physics_layer_0/polygon_0/points = PackedVector2Array(-8, -8, 8, -8, 8, 8, -8, 8)
-0:0/1 = 1
-0:0/1/modulate = Color(0.9, 0.9, 0.9, 1)
-0:0/2 = 2
-0:0/2/modulate = Color(0.95, 0.95, 0.95, 1)
-0:0/3 = 3
-0:0/3/modulate = Color(0.97, 0.97, 0.97, 1)
-
-[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_7lihs"]
-texture = ExtResource("5_b2bpf")
-0:0/next_alternative_id = 4
-0:0/0 = 0
-0:0/0/custom_data_0 = 30.0
-0:0/1 = 1
-0:0/1/modulate = Color(0.9, 0.9, 0.9, 1)
-0:0/1/custom_data_0 = 30.0
-0:0/2 = 2
-0:0/2/modulate = Color(0.95, 0.95, 0.95, 1)
-0:0/2/custom_data_0 = 30.0
-0:0/3 = 3
-0:0/3/modulate = Color(0.97, 0.97, 0.97, 1)
-0:0/3/custom_data_0 = 30.0
-
-[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_71axn"]
-texture = ExtResource("6_71axn")
-0:0/next_alternative_id = 4
-0:0/0 = 0
-0:0/1 = 1
-0:0/1/modulate = Color(1.7215022, 3.6408195, 1.797728e-05, 1)
-0:0/2 = 2
-0:0/2/modulate = Color(1.2088029, 0, 0, 1)
-0:0/3 = 3
-0:0/3/modulate = Color(3.9076936, 4.574041, 9.516133e-05, 1)
-
-[sub_resource type="TileSet" id="TileSet_74vwe"]
-physics_layer_0/collision_layer = 1
-custom_data_layer_0/name = "temperature"
-custom_data_layer_0/type = 3
-sources/1 = SubResource("TileSetAtlasSource_maiyi")
-sources/2 = SubResource("TileSetAtlasSource_gl6un")
-sources/3 = SubResource("TileSetAtlasSource_j5yw3")
-sources/4 = SubResource("TileSetAtlasSource_7lihs")
-sources/5 = SubResource("TileSetAtlasSource_71axn")
+[ext_resource type="Script" uid="uid://ly0nvdvyoygm" path="res://Scenes/languageselector.gd" id="11_3so38"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2irst"]
 content_margin_left = 303.0
@@ -104,15 +35,17 @@ expand_margin_right = 12.0
 [node name="Game2" type="Node2D" parent="."]
 script = ExtResource("1_b2bpf")
 
-[node name="TileMapLayer" type="TileMapLayer" parent="Game2"]
-scale = Vector2(0.4, 0.4)
-tile_set = SubResource("TileSet_74vwe")
-
 [node name="Timer" type="Timer" parent="Game2"]
 wait_time = 0.1
 autostart = true
 
 [node name="WorldContainer" type="Node2D" parent="Game2"]
+
+[node name="temptimer" type="Timer" parent="Game2"]
+
+[node name="chunkcleaner" type="Timer" parent="Game2"]
+wait_time = 60.0
+autostart = true
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 
@@ -121,10 +54,8 @@ layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -8.0
-offset_top = 6.0
-offset_right = -8.0
-offset_bottom = 6.0
+offset_top = 2.0
+offset_bottom = 2.0
 grow_horizontal = 2
 grow_vertical = 2
 size_flags_horizontal = 4
@@ -138,7 +69,6 @@ offset_bottom = 40.0
 
 [node name="HBoxContainer" type="HBoxContainer" parent="CanvasLayer/UI/MarginContainer2"]
 layout_mode = 2
-script = ExtResource("7_dahhg")
 
 [node name="sand" type="Button" parent="CanvasLayer/UI/MarginContainer2/HBoxContainer"]
 visible = false
@@ -169,6 +99,13 @@ visible = false
 layout_mode = 2
 text = "fire"
 icon = ExtResource("6_71axn")
+
+[node name="HFlowContainer" type="GridContainer" parent="CanvasLayer/UI/MarginContainer2"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+columns = 8
+script = ExtResource("7_dahhg")
 
 [node name="MarginContainer" type="MarginContainer" parent="CanvasLayer/UI"]
 layout_mode = 1
@@ -271,7 +208,6 @@ ignore_texture_size = true
 stretch_mode = 0
 
 [node name="setingsmenu" type="CanvasLayer" parent="."]
-visible = false
 
 [node name="Control" type="Control" parent="setingsmenu"]
 layout_mode = 3
@@ -412,6 +348,44 @@ text = "Gas/Liquid dispersion"
 layout_mode = 2
 button_pressed = true
 
+[node name="tempignoresleep" type="HBoxContainer" parent="setingsmenu/Control/MarginContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="Brushsizelabel" type="Label" parent="setingsmenu/Control/MarginContainer/MarginContainer/VBoxContainer/tempignoresleep"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_override_fonts/font = ExtResource("8_2irst")
+theme_override_font_sizes/font_size = 20
+text = "Temperature ignores sleep (laggy)"
+
+[node name="CheckButton" type="CheckButton" parent="setingsmenu/Control/MarginContainer/MarginContainer/VBoxContainer/tempignoresleep"]
+layout_mode = 2
+button_pressed = true
+
+[node name="languageselectorrow" type="HBoxContainer" parent="setingsmenu/Control/MarginContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+
+[node name="languageselector" type="MenuButton" parent="setingsmenu/Control/MarginContainer/MarginContainer/VBoxContainer/languageselectorrow"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+text = "Language Selection"
+flat = false
+script = ExtResource("11_3so38")
+
+[node name="world propierties" type="HBoxContainer" parent="setingsmenu/Control/MarginContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+
+[node name="Button" type="Button" parent="setingsmenu/Control/MarginContainer/MarginContainer/VBoxContainer/world propierties"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+text = "World options"
+
 [node name="MousePreview" type="CanvasLayer" parent="."]
 
 [node name="mouse" type="Node2D" parent="MousePreview"]
@@ -420,3 +394,5 @@ script = ExtResource("6_bf53h")
 [node name="Sprite2D" type="Sprite2D" parent="MousePreview/mouse"]
 
 [connection signal="timeout" from="Game2/Timer" to="." method="_on_timer_timeout"]
+[connection signal="timeout" from="Game2/temptimer" to="Game2" method="_on_temptimer_timeout"]
+[connection signal="timeout" from="Game2/chunkcleaner" to="Game2" method="_on_chunkcleaner_timeout"]

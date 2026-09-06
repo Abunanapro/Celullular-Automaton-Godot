@@ -1,4 +1,4 @@
-extends HBoxContainer
+extends GridContainer
 
 
 
@@ -9,19 +9,20 @@ var group := ButtonGroup.new()
 
 
 func _ready() -> void:
-	for id in sandsystem.MaterialColors.keys():
+	
+	for id in sandsystem.MATERIALS.keys():
 		if id == -1: # skip air
 			continue
 		_create_button(id)
 
 func _create_button(id: int) -> void:
-	var btn := Button.new()
+	var btn = Button.new()
 	btn.toggle_mode = true
 	btn.button_group = group
-	btn.text = sandsystem.MaterialNames[id]
+	btn.text = sandsystem.MATERIALS[id].name_key
 	btn.custom_minimum_size = Vector2(70, 32)
 
-	var color: Color = sandsystem.MaterialColors[id]
+	var color: Color = sandsystem.MATERIALS[id].color
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(color.r, color.g, color.b, 1.0)
 	style.set_corner_radius_all(4)
@@ -35,7 +36,7 @@ func _create_button(id: int) -> void:
 	style_pressed.border_color = Color.WHITE
 	btn.add_theme_stylebox_override("pressed", style_pressed)
 
-	btn.add_theme_color_override("font_color", Color.BLACK if color.get_luminance() > 0.5 else Color.WHITE)
+	btn.add_theme_color_override("font_color", Color.BLACK if color.get_luminance() > 0.5 else Color.WHITE)#adapts text to color of button
 	btn.add_theme_color_override("font_pressed_color", Color.BLACK if color.get_luminance() > 0.5 else Color.WHITE)
 
 	btn.pressed.connect(_on_material_pressed.bind(id))
@@ -47,6 +48,6 @@ func _create_button(id: int) -> void:
 func _on_material_pressed(id: int) -> void:
 	sandsystem.brush = id
 	sandsystem.lastmaterialbrush = id
-	sandsystem.brushtemp = sandsystem.MaterialTemps.get(id)
+	sandsystem.brushtemp = sandsystem.MATERIALS[id].base_temp
 	
 	sandsystem.delete = false

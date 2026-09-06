@@ -1,0 +1,20 @@
+keys,en,es,ca
+KEY_UNKNOWN,Unknown,Desconocido,Desconegut
+KEY_AIR,Air,Aire,Aire
+KEY_SAND,Sand,Arena,Sorra
+KEY_WATER,Water,Agua,Aigua
+KEY_DIRT,Dirt,Tierra,Terra
+KEY_STEAM,Steam,Vapor,Vapor
+KEY_FIRE,Fire,Fuego,Foc
+KEY_WOOD,Wood,Madera,Fusta
+KEY_OIL,Oil,Petróleo,Petroli
+KEY_MAGMA,Magma,Magma,Magma
+KEY_ACID,Acid,Acido,Acid
+KEY_ICE,Ice,Hielo,Gel
+KEY_WOOD_DUST,Sawdust,Serrín,Serradures
+KEY_BUTANE,Butane,Butano,Buta
+KEY_COPPER,Copper,Cobre,Coure
+KEY_IRON,Iron,Hierro,Ferro
+KEY_MOLTEN_IRON,Molten Iron,Hierro Fundido,Ferro Fos
+KEY_MOLTEN_COPPER,Molten Copper,Cobre Fundido,Coure Fos
+KEY_GLASS,Glass,Vidrio,Vidre

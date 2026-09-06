@@ -16,6 +16,10 @@ config/features=PackedStringArray("4.5", "GL Compatibility")
 config/icon="uid://dk5ltye3ej1w0"
 config/windows_native_icon="res://iconpeak.ico"
 
+[internationalization]
+
+locale/translations=PackedStringArray("res://lang/Translations - Hoja 1 (1).ca.translation", "res://lang/Translations - Hoja 1 (1).en.translation", "res://lang/Translations - Hoja 1 (1).es.translation")
+
 [rendering]
 
 textures/canvas_textures/default_texture_filter=0
